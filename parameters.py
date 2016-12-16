@@ -1,7 +1,7 @@
 # This file contains all parameters of the project
 
 #DNN parameters
-DNN_HIDDEN_LAYER_SIZE = [4096, 4096, 4096]
+DNN_HIDDEN_LAYER_SIZE = [1024, 1024, 1024]
 MAX_EPOCHS_TRAIN = 50
 
 #Audio parameters
@@ -32,4 +32,4 @@ MFCC_MIN_FREQ = CGRAM_MIN_FREQ
 MFCC_MAX_FREQ = CGRAM_MAX_FREQ
 
 #Logging
-OUTPUT_FOLDER = r'C:\temp\Thesis'
+OUTPUT_FOLDER = r'..\Results'

@@ -91,3 +91,4 @@ ENV/
 #User additions 
 *.hdf5
 *.pkl
+.idea/*

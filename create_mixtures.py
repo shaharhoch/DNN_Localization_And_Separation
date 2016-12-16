@@ -7,8 +7,8 @@ import parameters
 import data_entry
 import sys
 
-BRIR_FILE = r'..\..\Database\BRIR\UniS_Anechoic_BRIR_16k.sofa'
-SENTENCES_FOLDER = r'..\..\Database\Clean\Train_Data'
+BRIR_FILE = r'..\Database\BRIR\UniS_Anechoic_BRIR_16k.sofa'
+SENTENCES_FOLDER = r'..\Database\Clean\Train_Data'
 
 def set_signal_length(signal, length_sec):
     signal_length_samples = int(length_sec*parameters.SAMPLE_RATE_HZ)
