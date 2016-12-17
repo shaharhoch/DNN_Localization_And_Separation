@@ -7,9 +7,6 @@ import parameters
 import data_entry
 import sys
 
-BRIR_FILE = r'..\Database\BRIR\UniS_Anechoic_BRIR_16k.sofa'
-SENTENCES_FOLDER = r'..\Database\Clean\Train_Data'
-
 def set_signal_length(signal, length_sec):
     signal_length_samples = int(length_sec*parameters.SAMPLE_RATE_HZ)
 
@@ -61,22 +58,47 @@ def generalizedConcat(in_data, dim):
 
     return out_stacked
 
-def build_dataset():
-    list_dir = os.listdir(SENTENCES_FOLDER)
+def build_train_dataset():
+    list_dir = os.listdir(parameters.TRAIN_SENTENCES_FOLDER)
 
     data_entries = []
-    while(len(data_entries) < parameters.NUM_OF_SIGNALS):
-        signal_list = getSourceSignals(list_dir, SENTENCES_FOLDER)
-        cur_data_entry = data_entry.DataEntry(signal_list, BRIR_FILE)
+    while(len(data_entries) < parameters.NUM_OF_TRAIN_SIGNALS):
+        signal_list = getSourceSignals(list_dir, parameters.TRAIN_SENTENCES_FOLDER)
+        record_folder_path = os.path.join(parameters.OUTPUT_FOLDER,
+                                          r'Train\Data_Set_{0}_Records'.format(len(data_entries)))
+        cur_data_entry = data_entry.DataEntry(signal_list, parameters.BRIR_FILE, record_folder_path)
         data_entries.append(cur_data_entry)
 
         #Save data-set record
-        record_folder_path = os.path.join(parameters.OUTPUT_FOLDER, 'Data_Set_{0}_Records'.format(len(data_entries)))
-        cur_data_entry.saveDataSetRecord(record_folder_path)
+        cur_data_entry.saveDataSetRecord()
 
         # Print progress
-        progress = int(100 * float(len(data_entries)) / parameters.NUM_OF_SIGNALS)
-        sys.stdout.write('Creating data-set: {0:3d}% \r'.format(progress))
+        progress = int(100 * float(len(data_entries)) / parameters.NUM_OF_TRAIN_SIGNALS)
+        sys.stdout.write('Creating training data-set: {0:3d}% \r'.format(progress))
+        sys.stdout.flush()
+
+    sys.stdout.write('\n')
+    sys.stdout.flush()
+    print('Done creating data-set')
+    return data_entries
+
+def build_test_dataset():
+    list_dir = os.listdir(parameters.TEST_SENTENCES_FOLDER)
+
+    data_entries = []
+    while (len(data_entries) < parameters.NUM_OF_TEST_SIGNALS):
+        signal_list = getSourceSignals(list_dir, parameters.TEST_SENTENCES_FOLDER)
+        record_folder_path = os.path.join(parameters.OUTPUT_FOLDER,
+                                          r'Test\Data_Set_{0}_Records'.format(len(data_entries)))
+        cur_data_entry = data_entry.DataEntry(signal_list, parameters.BRIR_FILE, record_folder_path)
+        data_entries.append(cur_data_entry)
+
+        # Save data-set record
+        cur_data_entry.saveDataSetRecord()
+
+        # Print progress
+        progress = int(100 * float(len(data_entries)) / parameters.NUM_OF_TEST_SIGNALS)
+        sys.stdout.write('Creating test data-set: {0:3d}% \r'.format(progress))
         sys.stdout.flush()
 
     sys.stdout.write('\n')
@@ -85,4 +107,4 @@ def build_dataset():
     return data_entries
 
 if __name__ == '__main__':
-    build_dataset()
+    build_train_dataset()

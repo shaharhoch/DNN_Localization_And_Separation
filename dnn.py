@@ -68,7 +68,7 @@ def plotTrainAccuracy(history):
     train_acc = train_acc/parameters.CGRAM_NUM_CHANNELS
 
     #Plot accuracy
-    plt.figure()
+    fig = plt.figure()
     plt.plot(val_acc)
     plt.plot(train_acc)
     plt.title('Train and Validation categorical accuracy during training')
@@ -77,10 +77,10 @@ def plotTrainAccuracy(history):
     plt.legend(['validation', 'training'], loc='upper left')
     save_path = os.path.join(parameters.OUTPUT_FOLDER, 'Net_Accuracy')
     plt.savefig(save_path)
-    plt.show()
+    plt.close(fig)
 
 if __name__ == '__main__':
-    data_entries = create_mixtures.build_dataset()
+    data_entries = create_mixtures.build_train_dataset()
     (train_input, train_target) = dataEntriesToArray(data_entries)
 
     net = initNet(train_input.shape[1], [parameters.CGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS+1])
@@ -88,4 +88,19 @@ if __name__ == '__main__':
     #Make a callback to save net with best accuracy on validation set
     history = net.fit(train_input, train_target, batch_size=100, nb_epoch=parameters.MAX_EPOCHS_TRAIN, validation_split=0.15)
     plotTrainAccuracy(history)
+
+    test_entries = create_mixtures.build_test_dataset()
+    avg_source_fa = 0
+    avg_source_md = 0
+    for entry in test_entries:
+        assert isinstance(entry, DataEntry)
+        performance = entry.estimateNetPerformance(net)
+        avg_source_fa = avg_source_fa+performance['source_fa']
+        avg_source_md = avg_source_md+performance['source_md']
+
+    avg_source_fa = avg_source_fa/len(test_entries)
+    avg_source_md = avg_source_md / len(test_entries)
+
+    print('Average Source FA: {0}%'.format(avg_source_fa*100))
+    print('Average Source MD: {0}%'.format(avg_source_md*100))
 

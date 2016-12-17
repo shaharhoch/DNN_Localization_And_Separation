@@ -6,6 +6,8 @@ import parameters
 import features
 import os.path
 import matplotlib.pyplot as plt
+from keras.models import Model
+import scipy.io.wavfile
 
 class DataEntry():
 
@@ -19,11 +21,12 @@ class DataEntry():
         targets- the training targets for the data set
         res_signal - the sound signal containing the signal combination
     '''
-    def __init__(self, in_signals, brir_file_path):
+    def __init__(self, in_signals, brir_file_path, save_folder):
         brir_file = h5py.File(brir_file_path)
         brir = numpy.array(brir_file.get('Data.IR'))
         pos_def = numpy.array(brir_file.get('SourcePosition'))
 
+        self.save_folder = save_folder
         self.signals = []
         self.angles = []
 
@@ -89,6 +92,10 @@ class DataEntry():
         return int((angle+90)/5)
 
     @classmethod
+    def getAngleFromIdx(cls, angle_idx):
+        return angle_idx*5-90
+
+    @classmethod
     def getBinauralSound(cls, audio_in, brir, pos_def, angle):
         assert isinstance(audio_in, numpy.ndarray)
         assert isinstance(brir, numpy.ndarray)
@@ -129,7 +136,8 @@ class DataEntry():
         ipd = features.getIPD(self.res_signal)
         self.features = numpy.hstack((self.features, ipd))
 
-    def saveDataSetRecord(self, folder):
+    def saveDataSetRecord(self):
+        folder = self.save_folder
         if(os.path.isdir(folder) == False):
             os.makedirs(folder)
 
@@ -168,7 +176,7 @@ class DataEntry():
         #Save mixed ibm
         mixed_ibm = self.dnnTargetToMixedIbm(self.targets)
         fig = plt.figure()
-        plt.imshow(parameters.NUM_OF_DIRECTIONS - mixed_ibm.T, \
+        plt.imshow(parameters.NUM_OF_DIRECTIONS - mixed_ibm.T,
                    extent=(0, parameters.SIGNAL_LENGTH_SEC * 1000, cgram.shape[1], 0), aspect='auto')
         plt.title('Mixed ibm plot for mixture signal')
         plt.xlabel('Time[ms]')
@@ -185,3 +193,62 @@ class DataEntry():
                 mixed_ibm[time_dim, freq_dim] = dnn_target[freq_dim][time_dim, :].argmax()
 
         return mixed_ibm
+
+    @classmethod
+    def mixedIbmToIbms(cls, mixed_ibm):
+        assert isinstance(mixed_ibm, numpy.ndarray)
+
+        (angle_ind, angle_count) = numpy.unique(mixed_ibm, return_counts=True)
+        ibms = []
+        angles = []
+        for ind in range(len(angle_ind)):
+            if(angle_count[ind] < parameters.MIXED_IBM_IDENTIFICATION_TH):
+                continue
+
+            #Ignore the ibm of the noise
+            if(angle_ind[ind] >= parameters.NUM_OF_DIRECTIONS):
+                continue
+
+            ibm = numpy.zeros(mixed_ibm.shape)
+            ibm[mixed_ibm==angle_ind[ind]] = 1
+            ibms.append(ibm)
+            angles.append(cls.getAngleFromIdx(angle_ind[ind]))
+
+        return (ibms, angles)
+
+    def estimateNetPerformance(self, net, save=True):
+        assert isinstance(net, Model)
+
+        net_output = net.predict(self.features)
+
+        #Get predicted mixed ibm and save it
+        mixed_ibm = self.dnnTargetToMixedIbm(net_output)
+        if(save == True):
+            fig = plt.figure()
+            plt.imshow(parameters.NUM_OF_DIRECTIONS - mixed_ibm.T,
+                       extent=(0, parameters.SIGNAL_LENGTH_SEC * 1000, parameters.CGRAM_NUM_CHANNELS, 0), aspect='auto')
+            plt.title('Predicted mixed ibm plot for mixture signal')
+            plt.xlabel('Time[ms]')
+            plt.ylabel('Filterbank index')
+            save_path = os.path.join(self.save_folder, 'Predicted_Mixed_ibm')
+            plt.savefig(save_path)
+            plt.close(fig)
+
+        #Reconstruct signals
+        (ibms, angles) = self.mixedIbmToIbms(mixed_ibm)
+        if(save == True):
+            for ind in range(len(ibms)):
+                signal = features.applyIbmToSignal(self.res_signal[:,0], ibms[ind])
+                save_path = os.path.join(self.save_folder, 'estimated_signal_{0}.wav'.format(ind))
+                scipy.io.wavfile.write(save_path, int(parameters.SAMPLE_RATE_HZ), signal)
+
+        #Calculate performance
+        performance = {}
+
+        source_md = len([a for a in self.angles if a not in angles])/len(self.angles)
+        performance['source_md'] = source_md
+
+        source_fa = len([a for a in angles if a not in self.angles])/len(angles)
+        performance['source_fa'] = source_fa
+
+        return performance

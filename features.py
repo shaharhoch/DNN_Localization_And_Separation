@@ -14,9 +14,9 @@ def getMFCC(audio_in):
     if(len(audio_in.shape) > 1):
         audio_in = audio_in[:, 0]
 
-    mfcc_features = python_speech_features.mfcc(audio_in, samplerate=parameters.SAMPLE_RATE_HZ, \
-                                       winlen=parameters.WINDOW_LENGTH_MS*(1e-3), winstep=parameters.WINDOW_STEP_MS*(1e-3),\
-                                       numcep=parameters.MFCC_NUM_COEFF+1, lowfreq=parameters.MFCC_MIN_FREQ, \
+    mfcc_features = python_speech_features.mfcc(audio_in, samplerate=parameters.SAMPLE_RATE_HZ,
+                                       winlen=parameters.WINDOW_LENGTH_MS*(1e-3), winstep=parameters.WINDOW_STEP_MS*(1e-3),
+                                       numcep=parameters.MFCC_NUM_COEFF+1, lowfreq=parameters.MFCC_MIN_FREQ,
                                        highfreq=parameters.MFCC_MAX_FREQ, nfilt=parameters.MFCC_NUM_COEFF*2)
 
     assert isinstance(mfcc_features, numpy.ndarray)
@@ -123,7 +123,7 @@ def applyGammatoneFilterbank(signal_in):
 
 def applyIbmToSignal(signal_in, ibm=None):
     assert isinstance(signal_in, numpy.ndarray)
-    if(ibm == None):
+    if(ibm is None):
         num_of_windows = int((float(len(signal_in) - parameters.WINDOW_SIZE_SAMPLES) / float(parameters.WINDOW_STEP_SAMPLES)) + 1)
         ibm = numpy.ones((num_of_windows, parameters.CGRAM_NUM_CHANNELS))
     assert isinstance(ibm, numpy.ndarray)
@@ -149,10 +149,11 @@ def applyIbmToSignal(signal_in, ibm=None):
         win_shift = parameters.WINDOW_STEP_SAMPLES
         weight = numpy.zeros(len(signal_in))
 
-        weight[0:win_len/2] = ibm[0,channel]*cos_win[win_len/2:]
+        weight[0:int(win_len/2)] = ibm[0,channel]*cos_win[int(win_len/2):]
         for frame_ind in range(1,ibm.shape[0]):
             mid_ind = win_shift*frame_ind
-            weight[mid_ind-win_len/2:mid_ind+win_len/2] = weight[mid_ind-win_len/2:mid_ind+win_len/2] + ibm[frame_ind,channel]*cos_win
+            weight[int(mid_ind-win_len/2):int(mid_ind+win_len/2)] = weight[int(mid_ind-win_len/2):int(mid_ind+win_len/2)]\
+                                                                    + ibm[frame_ind,channel]*cos_win
         signal_out = signal_out + weight*channel_signal
 
     return signal_out
