@@ -185,6 +185,19 @@ class DataEntry():
         plt.savefig(save_path)
         plt.close(fig)
 
+        # Get ibms for each original signal and save it
+        for ind in range(len(self.signals)):
+            ibm = self.getIbm(self.signals[ind])
+            fig = plt.figure()
+            plt.imshow(ibm.T, extent=(0, parameters.SIGNAL_LENGTH_SEC * 1000, parameters.CGRAM_NUM_CHANNELS, 0),
+                       aspect='auto')
+            plt.title('Original ibm plot for signal {0}'.format(ind + 1))
+            plt.xlabel('Time[ms]')
+            plt.ylabel('Filterbank index')
+            save_path = os.path.join(self.save_folder, 'Original_{0}_ibm'.format(ind + 1))
+            plt.savefig(save_path)
+            plt.close(fig)
+
     @classmethod
     def dnnTargetToMixedIbm(cls, dnn_target):
         mixed_ibm = numpy.zeros((dnn_target[0].shape[0], len(dnn_target)))
@@ -252,3 +265,10 @@ class DataEntry():
         performance['source_fa'] = source_fa
 
         return performance
+
+    @classmethod
+    def getIbm(cls, signal_in):
+        cgram = features.getCochleagram(signal_in)
+        cgram[cgram<parameters.CGRAM_NOISE_TH] = 0
+        cgram[cgram>0] = 1
+        return cgram

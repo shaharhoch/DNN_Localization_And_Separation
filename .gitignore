@@ -92,3 +92,4 @@ ENV/
 *.hdf5
 *.pkl
 .idea/*
+test.py
