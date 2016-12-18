@@ -7,27 +7,31 @@ import parameters
 import data_entry
 import sys
 
+
 def set_signal_length(signal, length_sec):
     signal_length_samples = int(length_sec*parameters.SAMPLE_RATE_HZ)
 
     if(len(signal) >= signal_length_samples):
         return signal[0:signal_length_samples]
 
-    #if signal is shorter, zero pad
+    # if signal is shorter, zero pad
     size_of_padding = signal_length_samples-len(signal)
     padded_signal = numpy.append(signal, [0]*size_of_padding)
     return padded_signal
 
+
 def load_wav_file(file_path):
     (fs, wav_data) = scipy.io.wavfile.read(file_path)
     assert (fs == parameters.SAMPLE_RATE_HZ)
+    assert isinstance(wav_data, numpy.ndarray)
+
     wav_data = wav_data / (float(2 ** 16))  # Convert audio array to float
     wav_data = set_signal_length(wav_data, parameters.SIGNAL_LENGTH_SEC)
     return wav_data
 
 def getSourceSignals(file_list, orig_dir):
     signal_list = []
-    while(len(signal_list)<parameters.NUM_OF_SOURCES_IN_SIGNAL):
+    while(len(signal_list) < parameters.NUM_OF_SOURCES_IN_SIGNAL):
         if(len(file_list) == 0):
             raise Exception('Not enough input wav files in folder')
 
@@ -58,6 +62,7 @@ def generalizedConcat(in_data, dim):
 
     return out_stacked
 
+
 def build_train_dataset():
     list_dir = os.listdir(parameters.TRAIN_SENTENCES_FOLDER)
 
@@ -69,7 +74,7 @@ def build_train_dataset():
         cur_data_entry = data_entry.DataEntry(signal_list, parameters.BRIR_FILE, record_folder_path)
         data_entries.append(cur_data_entry)
 
-        #Save data-set record
+        # Save data-set record
         cur_data_entry.saveDataSetRecord()
 
         # Print progress
@@ -81,6 +86,7 @@ def build_train_dataset():
     sys.stdout.flush()
     print('Done creating data-set')
     return data_entries
+
 
 def build_test_dataset():
     list_dir = os.listdir(parameters.TEST_SENTENCES_FOLDER)
