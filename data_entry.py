@@ -29,11 +29,15 @@ class DataEntry():
         self.save_folder = save_folder
         self.signals = []
         self.angles = []
+        self.noise = numpy.zeros(in_signals[0].shape)
 
         signal_length_samples = int(parameters.SIGNAL_LENGTH_SEC*parameters.SAMPLE_RATE_HZ)
         self.res_signal = numpy.zeros((signal_length_samples, 2))
         for signal in in_signals:
             assert (len(signal) == signal_length_samples)
+            # Normalize signal power
+            sig_rms = self.getArrayRms(signal)
+            signal = (signal/sig_rms)*parameters.INPUT_SIGNAL_RMS
 
             self.angles.append(DataEntry.getRandomAngle(self.angles))
             binaural_signal = DataEntry.getBinauralSound(signal, brir, pos_def, self.angles[-1])
@@ -44,12 +48,21 @@ class DataEntry():
         self.updateTargetsFromSignals()
         self.updateFeaturesFromResSignal()
 
+    @classmethod
+    def getArrayRms(cls, arr_in):
+        assert isinstance(arr_in, numpy.ndarray)
+        assert (len(arr_in.shape) == 1)
+
+        rms = numpy.sqrt(numpy.linalg.norm(arr_in)/arr_in.size)
+        return rms
+
     def updateTargetsFromSignals(self):
         cgrams = []
         for binaural_signal in self.signals:
             cgram = features.getCochleagram(binaural_signal[:,0])
-            cgram[cgram<parameters.CGRAM_NOISE_TH] = 0
             cgrams.append(cgram)
+
+        noise_cgram = features.getCochleagram(self.noise)
 
         #Init target with zeros
         targets = []
@@ -67,7 +80,8 @@ class DataEntry():
                 max_angle = self.angles[max_ind]
                 angle_ind = DataEntry.getAngleIdx(max_angle)
 
-                if(max_val == 0):
+                noise_th = noise_cgram[time_ind, out_ind]*(10**(parameters.CGRAM_NOISE_TH_dB/10))
+                if(max_val < noise_th):
                     targets[out_ind][time_ind,-1] = 1
                 else:
                     targets[out_ind][time_ind, angle_ind] = 1
@@ -186,15 +200,16 @@ class DataEntry():
         plt.close(fig)
 
         # Get ibms for each original signal and save it
-        for ind in range(len(self.signals)):
-            ibm = self.getIbm(self.signals[ind])
+        (unique_ibms, angles) = self.mixedIbmToIbms(mixed_ibm)
+        for ind in range(len(unique_ibms)):
+            ibm = unique_ibms[ind]
             fig = plt.figure()
             plt.imshow(ibm.T, extent=(0, parameters.SIGNAL_LENGTH_SEC * 1000, parameters.CGRAM_NUM_CHANNELS, 0),
                        aspect='auto')
-            plt.title('Original ibm plot for signal {0}'.format(ind + 1))
+            plt.title('IBM plot for signal {0}'.format(ind + 1))
             plt.xlabel('Time[ms]')
             plt.ylabel('Filterbank index')
-            save_path = os.path.join(self.save_folder, 'Original_{0}_ibm'.format(ind + 1))
+            save_path = os.path.join(self.save_folder, 'Original_{0}_IBM'.format(ind + 1))
             plt.savefig(save_path)
             plt.close(fig)
 
@@ -265,10 +280,3 @@ class DataEntry():
         performance['source_fa'] = source_fa
 
         return performance
-
-    @classmethod
-    def getIbm(cls, signal_in):
-        cgram = features.getCochleagram(signal_in)
-        cgram[cgram<parameters.CGRAM_NOISE_TH] = 0
-        cgram[cgram>0] = 1
-        return cgram

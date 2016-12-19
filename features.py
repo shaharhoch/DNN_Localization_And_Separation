@@ -24,10 +24,10 @@ def getMFCC(audio_in):
 
 def divideSignalToWindows(signal):
     fs = parameters.SAMPLE_RATE_HZ
-    win_size = int((parameters.WINDOW_LENGTH_MS/1000.0)*parameters.SAMPLE_RATE_HZ)
-    win_step = int((parameters.WINDOW_STEP_MS/1000.0)*parameters.SAMPLE_RATE_HZ)
+    win_size = parameters.WINDOW_SIZE_SAMPLES
+    win_step = parameters.WINDOW_STEP_SAMPLES
 
-    num_of_windows = int((float(len(signal)-parameters.WINDOW_SIZE_SAMPLES)/float(parameters.WINDOW_STEP_SAMPLES))+1)
+    num_of_windows = int((float(len(signal)-win_size)/float(win_step))+1)
     divided_signal = numpy.zeros([num_of_windows, win_size])
     for i in range(num_of_windows):
         start_ind = i*win_step
@@ -132,8 +132,8 @@ def applyIbmToSignal(signal_in, ibm=None):
     gt_fir = getGammatoneFir()
     fc = getGammatoneCenterFreq()
 
-    #Get raised cosine window
-    # Get time vector in range [0,1] in size of window
+    # Get raised cosine window
+    # Get time vector in range [0,1) in size of window
     time = numpy.array(range(parameters.WINDOW_SIZE_SAMPLES))/parameters.WINDOW_SIZE_SAMPLES
     cos_win = (1+numpy.cos(2*numpy.pi*time-numpy.pi))/2
 
@@ -144,16 +144,20 @@ def applyIbmToSignal(signal_in, ibm=None):
         channel_signal = scipy.signal.convolve(channel_signal, gt_fir[channel,:], 'same')
         channel_signal = channel_signal[::-1]/mid_ear_coeff #Flip signal and divide by mid_ear_coeffs again
 
-        #Get ibm weight
+        # Get signal channel weight
         win_len = parameters.WINDOW_SIZE_SAMPLES
         win_shift = parameters.WINDOW_STEP_SAMPLES
         weight = numpy.zeros(len(signal_in))
 
-        weight[0:int(win_len/2)] = ibm[0,channel]*cos_win[int(win_len/2):]
-        for frame_ind in range(1,ibm.shape[0]):
-            mid_ind = win_shift*frame_ind
-            weight[int(mid_ind-win_len/2):int(mid_ind+win_len/2)] = weight[int(mid_ind-win_len/2):int(mid_ind+win_len/2)]\
-                                                                    + ibm[frame_ind,channel]*cos_win
+        for frame_ind in range(ibm.shape[0]):
+            start_ind = frame_ind*win_shift
+            weight[start_ind:start_ind+win_len] += ibm[frame_ind,channel]*cos_win
+
+        # The first and last win shifts of the signal didn't get summed up twice, so we need to deal with it separately.
+        # We don't have the ibm for it, but we can use the last ibm and assume it stays unchanged
+        weight[-1*win_shift:] += ibm[-1,channel]*cos_win[0:win_shift]
+        weight[0:win_shift] += ibm[0,channel]*cos_win[-1*win_shift:]
+
         signal_out = signal_out + weight*channel_signal
 
     return signal_out
@@ -162,7 +166,7 @@ def getCochleagram(audio_in):
     assert isinstance(audio_in, numpy.ndarray)
     assert (audio_in.size % parameters.WINDOW_STEP_SAMPLES) == 0
 
-    #Get single channel if input is dual channel
+    # Get single channel if input is dual channel
     if(len(audio_in.shape) > 1):
         audio_in = audio_in[:,0]
 
