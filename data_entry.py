@@ -277,7 +277,7 @@ class DataEntry():
         if(save == True):
             for ind in range(len(ibms)):
                 signal = features.applyIbmToSignal(self.res_signal[:,0], ibms[ind])
-                save_path = os.path.join(self.save_folder, 'estimated_signal_{0}.wav'.format(ind))
+                save_path = os.path.join(self.save_folder, 'estimated_signal_{0}.wav'.format(ind+1))
                 scipy.io.wavfile.write(save_path, int(parameters.SAMPLE_RATE_HZ), signal)
 
         #Calculate performance
