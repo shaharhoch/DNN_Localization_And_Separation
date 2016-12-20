@@ -47,22 +47,6 @@ def getSourceSignals(file_list, orig_dir):
 
     return signal_list
 
-def generalizedConcat(in_data, dim):
-    list_in_data = list(in_data)
-    out_stacked = []
-
-    for data in list_in_data:
-        if(len(data) == 0):
-            continue
-        if(len(out_stacked) == 0):
-            out_stacked = data
-            continue
-
-        out_stacked = numpy.concatenate((out_stacked, data), axis=dim)
-
-    return out_stacked
-
-
 def build_train_dataset():
     list_dir = os.listdir(parameters.TRAIN_SENTENCES_FOLDER)
 

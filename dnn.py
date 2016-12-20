@@ -12,8 +12,6 @@ from data_entry import DataEntry
 import matplotlib.pyplot as plt
 
 def initNet(in_dim, out_dim):
-    assert len(out_dim) == 2
-
     #Create input layer
     inputs = Input(shape = (in_dim,))
 
@@ -23,13 +21,10 @@ def initNet(in_dim, out_dim):
         temp_layer = Dense(output_dim=layer_size, activation='sigmoid')(temp_layer)
 
     #Create output
-    output_layers = []
-    for ind in range(out_dim[0]):
-        out_layer = Dense(output_dim=out_dim[1], activation='softmax',name='out_{0}'.format(ind))(temp_layer)
-        output_layers.append(out_layer)
+    output_layer = Dense(output_dim=out_dim, activation='softmax', name='out')(temp_layer)
 
     #Inlude all layers in a model
-    model = Model(input=inputs, output=output_layers)
+    model = Model(input=inputs, output=output_layer)
 
     #Use default values for adaptive gradient decent optimizer, as recommended in Keras documentation
     optimizer = Adagrad()
@@ -38,31 +33,29 @@ def initNet(in_dim, out_dim):
     return model
 
 def dataEntriesToArray(data_entries):
-    data_in = numpy.array([])
-
-    #Init data target
+    #Init data input and target
+    data_in = []
     data_target = []
     for ind in range(parameters.SGRAM_NUM_CHANNELS):
         data_target.append(numpy.array([]))
+        data_in.append(numpy.array([]))
 
     for entry in data_entries:
         assert isinstance(entry, DataEntry)
-        data_in = create_mixtures.generalizedConcat((data_in, entry.features), dim = 0)
-
         for ind in range(len(data_target)):
-            data_target[ind] = create_mixtures.generalizedConcat((data_target[ind], entry.targets[ind]), dim=0)
+            data_target[ind] = DataEntry.generalizedConcat((data_target[ind], entry.targets[ind]), dim=0)
+            data_in[ind] = DataEntry.generalizedConcat((data_in[ind], entry.features[ind]), dim=0)
 
     return (data_in, data_target)
 
-def plotTrainAccuracy(history):
-    assert isinstance(history, callbacks.History)
-
+def plotTrainAccuracy(nets_history):
     # Calculate total average train and validation accuracy
     val_acc = numpy.zeros(parameters.MAX_EPOCHS_TRAIN)
     train_acc = numpy.zeros(parameters.MAX_EPOCHS_TRAIN)
-    for ind in range(parameters.SGRAM_NUM_CHANNELS):
-        val_acc = val_acc + numpy.array(history.history['val_out_{0}_categorical_accuracy'.format(ind)])
-        train_acc = train_acc + numpy.array(history.history['out_{0}_categorical_accuracy'.format(ind)])
+    for history in nets_history:
+        assert isinstance(history, callbacks.History)
+        val_acc = val_acc + numpy.array(history.history['val_categorical_accuracy'])
+        train_acc = train_acc + numpy.array(history.history['categorical_accuracy'])
 
     val_acc = val_acc/parameters.SGRAM_NUM_CHANNELS
     train_acc = train_acc/parameters.SGRAM_NUM_CHANNELS
@@ -83,17 +76,25 @@ if __name__ == '__main__':
     data_entries = create_mixtures.build_train_dataset()
     (train_input, train_target) = dataEntriesToArray(data_entries)
 
-    net = initNet(train_input.shape[1], [parameters.SGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS+1])
+    # Train all the needed DNNs
+    nets = []
+    nets_history = []
+    for ind in range(parameters.SGRAM_NUM_CHANNELS):
+        print('Training net {0} out of {1}:'.format(ind, parameters.SGRAM_NUM_CHANNELS))
+        net = initNet(train_input[ind].shape[1], train_target[ind].shape[1])
+        nets.append(net)
+        history = net.fit(train_input[ind], train_target[ind], batch_size=100, nb_epoch=parameters.MAX_EPOCHS_TRAIN,
+                          validation_split=0.15)
+        nets_history.append(history)
 
-    history = net.fit(train_input, train_target, batch_size=100, nb_epoch=parameters.MAX_EPOCHS_TRAIN, validation_split=0.15)
-    plotTrainAccuracy(history)
+    plotTrainAccuracy(nets_history)
 
     test_entries = create_mixtures.build_test_dataset()
     avg_source_fa = 0
     avg_source_md = 0
     for entry in test_entries:
         assert isinstance(entry, DataEntry)
-        performance = entry.estimateNetPerformance(net)
+        performance = entry.estimateNetsPerformance(nets)
         avg_source_fa = avg_source_fa+performance['source_fa']
         avg_source_md = avg_source_md+performance['source_md']
 

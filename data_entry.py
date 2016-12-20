@@ -139,16 +139,21 @@ class DataEntry():
         return min_idx
 
     def updateFeaturesFromResSignal(self):
-        self.features = numpy.array([])
+        self.features = []
 
+        # Calculate features
         mfcc = features.getMFCC(self.res_signal)
-        self.features = mfcc
-
         ild = features.getILD(self.res_signal)
-        self.features = numpy.hstack((self.features, ild))
-
         ipd = features.getIPD(self.res_signal)
-        self.features = numpy.hstack((self.features, ipd))
+
+        for ind in range(parameters.SGRAM_NUM_CHANNELS):
+            '''
+            Python doesn't have the concept of 1D column arrays, so it thinks every 1D array is a row vector.
+            This gives us a problem when we try to concat 1D column vectors. To avoid this problem we will concat the
+            transpose of the vectors and take the transpose of the result.
+            '''
+            channel_features = numpy.column_stack([ild[:,ind], ipd[:,ind], mfcc])
+            self.features.append(channel_features)
 
     def saveDataSetRecord(self):
         folder = self.save_folder
@@ -246,10 +251,13 @@ class DataEntry():
 
         return (ibms, angles)
 
-    def estimateNetPerformance(self, net, save=True):
-        assert isinstance(net, Model)
-
-        net_output = net.predict(self.features)
+    def estimateNetsPerformance(self, nets, save=True):
+        # Get nets predicted output
+        net_output = []
+        for ind in range(len(nets)):
+            net = nets[ind]
+            assert isinstance(net, Model)
+            net_output.append(net.predict(self.features[ind]))
 
         #Get predicted mixed ibm and save it
         mixed_ibm = self.dnnTargetToMixedIbm(net_output)
@@ -282,3 +290,19 @@ class DataEntry():
         performance['source_fa'] = source_fa
 
         return performance
+
+    @classmethod
+    def generalizedConcat(cls, in_data, dim):
+        list_in_data = list(in_data)
+        out_stacked = []
+
+        for data in list_in_data:
+            if(len(data) == 0):
+                continue
+            if(len(out_stacked) == 0):
+                out_stacked = data
+                continue
+
+            out_stacked = numpy.concatenate((out_stacked, data), axis=dim)
+
+        return out_stacked

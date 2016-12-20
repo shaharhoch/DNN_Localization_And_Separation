@@ -1,8 +1,8 @@
 # This file contains all parameters of the project
 
 #DNN parameters
-DNN_HIDDEN_LAYER_SIZE = [1024, 1024, 1024]
-MAX_EPOCHS_TRAIN = 50
+DNN_HIDDEN_LAYER_SIZE = [512, 512, 512]
+MAX_EPOCHS_TRAIN = 25
 
 #Audio parameters
 SAMPLE_RATE_HZ = float(16e3)
@@ -45,4 +45,4 @@ TRAIN_SENTENCES_FOLDER = r'..\Database\Clean\Train_Data'
 TEST_SENTENCES_FOLDER = r'..\Database\Clean\Test_Data'
 
 #IBM Parameters
-MIXED_IBM_IDENTIFICATION_TH = 200
+MIXED_IBM_IDENTIFICATION_TH = 2000

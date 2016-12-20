@@ -162,8 +162,8 @@ def getIPD(audio_in):
     channel1 = divideSignalToWindows(audio_in[:,0])
     channel2 = divideSignalToWindows(audio_in[:,1])
 
-    channel1_fft = numpy.fft.fft(channel1, axis=1)
-    channel2_fft = numpy.fft.fft(channel2, axis=1)
+    channel1_fft = numpy.fft.rfft(channel1, axis=1)
+    channel2_fft = numpy.fft.rfft(channel2, axis=1)
 
     #Avoid dividing by zero- change every elemnt equal to zero to a very small value
     channel2_fft[channel2_fft == 0] = sys.float_info.min
@@ -176,8 +176,8 @@ def getILD(audio_in):
     channel1 = divideSignalToWindows(audio_in[:, 0])
     channel2 = divideSignalToWindows(audio_in[:, 1])
 
-    channel1_fft = numpy.fft.fft(channel1, axis=1)
-    channel2_fft = numpy.fft.fft(channel2, axis=1)
+    channel1_fft = numpy.fft.rfft(channel1, axis=1)
+    channel2_fft = numpy.fft.rfft(channel2, axis=1)
 
     # Avoid dividing by zero- change every elemnt equal to zero to a very small value
     channel2_fft[channel2_fft == 0] = sys.float_info.min
