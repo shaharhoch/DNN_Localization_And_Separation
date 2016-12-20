@@ -10,6 +10,9 @@ import create_mixtures
 import numpy
 from data_entry import DataEntry
 import matplotlib.pyplot as plt
+import pickle
+
+TRAIN_DATA_FILE = 'train_data.pkl'
 
 def initNet(in_dim, out_dim):
     #Create input layer
@@ -73,14 +76,29 @@ def plotTrainAccuracy(nets_history):
     plt.close(fig)
 
 if __name__ == '__main__':
-    data_entries = create_mixtures.build_train_dataset()
-    (train_input, train_target) = dataEntriesToArray(data_entries)
+    training_data_file = os.path.join(parameters.OUTPUT_FOLDER, TRAIN_DATA_FILE)
+    if(os.path.exists(training_data_file)):
+        print('Found training data file, loading...')
+        file_read = open(training_data_file, 'rb')
+        (train_input, train_target) = pickle.load(file_read)
+        file_read.close()
+        print('Training data loaded.')
+    else:
+        print('Training data file was not found.')
+        data_entries = create_mixtures.build_train_dataset()
+        (train_input, train_target) = dataEntriesToArray(data_entries)
+
+        print('Saving training data file...')
+        file_write = open(training_data_file, 'wb')
+        pickle.dump((train_input, train_target), file_write)
+        file_write.close()
+        print('Training data file saved.')
 
     # Train all the needed DNNs
     nets = []
     nets_history = []
     for ind in range(parameters.SGRAM_NUM_CHANNELS):
-        print('Training net {0} out of {1}:'.format(ind, parameters.SGRAM_NUM_CHANNELS))
+        print('Training net {0} out of {1}:'.format(ind+1, parameters.SGRAM_NUM_CHANNELS))
         net = initNet(train_input[ind].shape[1], train_target[ind].shape[1])
         nets.append(net)
         history = net.fit(train_input[ind], train_target[ind], batch_size=100, nb_epoch=parameters.MAX_EPOCHS_TRAIN,
