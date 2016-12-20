@@ -57,30 +57,30 @@ class DataEntry():
         return rms
 
     def updateTargetsFromSignals(self):
-        cgrams = []
+        sgrams = []
         for binaural_signal in self.signals:
-            cgram = features.getCochleagram(binaural_signal[:,0])
-            cgrams.append(cgram)
+            sgram = features.getSpectrogram(binaural_signal[:,0])
+            sgrams.append(sgram)
 
-        noise_cgram = features.getCochleagram(self.noise)
+        noise_sgram = features.getSpectrogram(self.noise)
 
         #Init target with zeros
         targets = []
-        for ind in range(cgrams[0].shape[1]):
-            targets.append(numpy.zeros((cgrams[0].shape[0], parameters.NUM_OF_DIRECTIONS+1)))
+        for ind in range(sgrams[0].shape[1]):
+            targets.append(numpy.zeros((sgrams[0].shape[0], parameters.NUM_OF_DIRECTIONS+1)))
 
-        for out_ind in range(cgrams[0].shape[1]):
-            for time_ind in range(cgrams[0].shape[0]):
-                cgram_vals = numpy.array([])
-                for cgram in cgrams:
-                    cgram_vals = numpy.append(cgram_vals, cgram[time_ind,out_ind])
+        for out_ind in range(sgrams[0].shape[1]):
+            for time_ind in range(sgrams[0].shape[0]):
+                sgram_vals = numpy.array([])
+                for sgram in sgrams:
+                    sgram_vals = numpy.append(sgram_vals, sgram[time_ind,out_ind])
 
-                max_ind = cgram_vals.argmax()
-                max_val = cgram_vals.max()
+                max_ind = sgram_vals.argmax()
+                max_val = sgram_vals.max()
                 max_angle = self.angles[max_ind]
                 angle_ind = DataEntry.getAngleIdx(max_angle)
 
-                noise_th = noise_cgram[time_ind, out_ind]*(10**(parameters.CGRAM_NOISE_TH_dB/10))
+                noise_th = noise_sgram[time_ind, out_ind]*(10**(parameters.SGRAM_NOISE_TH_dB/10))
                 if(max_val < noise_th):
                     targets[out_ind][time_ind,-1] = 1
                 else:
@@ -164,37 +164,39 @@ class DataEntry():
         save_path = os.path.join(folder, 'Mixture.wav')
         scipy.io.wavfile.write(save_path, int(parameters.SAMPLE_RATE_HZ), self.res_signal)
 
-        #Save Cochleagram images
+        #Save Spectrogram images
         for ind in range(len(self.signals)):
-            cgram = features.getCochleagram(self.signals[ind])
+            sgram = features.getSpectrogram(self.signals[ind][:,0])
             fig = plt.figure()
-            plt.imshow(cgram.T, extent=(0, parameters.SIGNAL_LENGTH_SEC*1000, cgram.shape[1], 0), aspect='auto')
-            plt.title('Cochleagram plot for original signal {0}'.format(ind+1))
+            plt.imshow(sgram.T[::-1,:], aspect='auto',
+                       extent=(0, parameters.SIGNAL_LENGTH_SEC * 1000, 0, parameters.SAMPLE_RATE_HZ / 2))
+            plt.title('Spectrogram plot for original signal {0}'.format(ind+1))
             plt.xlabel('Time[ms]')
-            plt.ylabel('Filterbank index')
-            save_path = os.path.join(folder, 'Origin_Cochleagram_{0}'.format(ind+1))
+            plt.ylabel('Frequency[Hz]')
+            save_path = os.path.join(folder, 'Origin_Spectrogram_{0}'.format(ind+1))
             plt.savefig(save_path)
             plt.close(fig)
 
-        #Cgram for mixture
-        cgram = features.getCochleagram(self.res_signal)
+        #Spectrogram for mixture
+        sgram = features.getSpectrogram(self.res_signal[:,0])
         fig = plt.figure()
-        plt.imshow(cgram.T, extent=(0, parameters.SIGNAL_LENGTH_SEC*1000, cgram.shape[1], 0), aspect='auto')
-        plt.title('Cochleagram plot for mixture signal')
+        plt.imshow(sgram.T[::-1,:], aspect='auto',
+                   extent=(0, parameters.SIGNAL_LENGTH_SEC * 1000, 0, parameters.SAMPLE_RATE_HZ / 2))
+        plt.title('Spectrogram plot for mixture signal')
         plt.xlabel('Time[ms]')
-        plt.ylabel('Filterbank index')
-        save_path = os.path.join(folder, 'Mixture_Cochleagram')
+        plt.ylabel('Frequency[Hz]')
+        save_path = os.path.join(folder, 'Mixture_Spectrogram')
         plt.savefig(save_path)
         plt.close(fig)
 
         #Save mixed ibm
         mixed_ibm = self.dnnTargetToMixedIbm(self.targets)
         fig = plt.figure()
-        plt.imshow(parameters.NUM_OF_DIRECTIONS - mixed_ibm.T,
-                   extent=(0, parameters.SIGNAL_LENGTH_SEC * 1000, cgram.shape[1], 0), aspect='auto')
+        plt.imshow(parameters.NUM_OF_DIRECTIONS - mixed_ibm.T, aspect='auto',
+                   extent=(0, parameters.SIGNAL_LENGTH_SEC * 1000, 0, parameters.SAMPLE_RATE_HZ / 2))
         plt.title('Mixed ibm plot for mixture signal')
         plt.xlabel('Time[ms]')
-        plt.ylabel('Filterbank index')
+        plt.ylabel('Frequency[Hz]')
         save_path = os.path.join(folder, 'Mixed_ibm')
         plt.savefig(save_path)
         plt.close(fig)
@@ -204,11 +206,11 @@ class DataEntry():
         for ind in range(len(unique_ibms)):
             ibm = unique_ibms[ind]
             fig = plt.figure()
-            plt.imshow(ibm.T, extent=(0, parameters.SIGNAL_LENGTH_SEC * 1000, parameters.CGRAM_NUM_CHANNELS, 0),
-                       aspect='auto')
+            plt.imshow(ibm.T, aspect='auto',
+                       extent=(0, parameters.SIGNAL_LENGTH_SEC * 1000, 0, parameters.SAMPLE_RATE_HZ / 2))
             plt.title('IBM plot for signal {0}'.format(ind + 1))
             plt.xlabel('Time[ms]')
-            plt.ylabel('Filterbank index')
+            plt.ylabel('Frequency[Hz]')
             save_path = os.path.join(self.save_folder, 'Original_{0}_IBM'.format(ind + 1))
             plt.savefig(save_path)
             plt.close(fig)
@@ -253,11 +255,11 @@ class DataEntry():
         mixed_ibm = self.dnnTargetToMixedIbm(net_output)
         if(save == True):
             fig = plt.figure()
-            plt.imshow(parameters.NUM_OF_DIRECTIONS - mixed_ibm.T,
-                       extent=(0, parameters.SIGNAL_LENGTH_SEC * 1000, parameters.CGRAM_NUM_CHANNELS, 0), aspect='auto')
+            plt.imshow(parameters.NUM_OF_DIRECTIONS - mixed_ibm.T, aspect='auto',
+                       extent=(0, parameters.SIGNAL_LENGTH_SEC * 1000, 0, parameters.SAMPLE_RATE_HZ / 2))
             plt.title('Predicted mixed ibm plot for mixture signal')
             plt.xlabel('Time[ms]')
-            plt.ylabel('Filterbank index')
+            plt.ylabel('Frequency[Hz]')
             save_path = os.path.join(self.save_folder, 'Predicted_Mixed_ibm')
             plt.savefig(save_path)
             plt.close(fig)

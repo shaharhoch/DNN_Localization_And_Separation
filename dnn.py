@@ -42,7 +42,7 @@ def dataEntriesToArray(data_entries):
 
     #Init data target
     data_target = []
-    for ind in range(parameters.CGRAM_NUM_CHANNELS):
+    for ind in range(parameters.SGRAM_NUM_CHANNELS):
         data_target.append(numpy.array([]))
 
     for entry in data_entries:
@@ -60,12 +60,12 @@ def plotTrainAccuracy(history):
     # Calculate total average train and validation accuracy
     val_acc = numpy.zeros(parameters.MAX_EPOCHS_TRAIN)
     train_acc = numpy.zeros(parameters.MAX_EPOCHS_TRAIN)
-    for ind in range(parameters.CGRAM_NUM_CHANNELS):
+    for ind in range(parameters.SGRAM_NUM_CHANNELS):
         val_acc = val_acc + numpy.array(history.history['val_out_{0}_categorical_accuracy'.format(ind)])
         train_acc = train_acc + numpy.array(history.history['out_{0}_categorical_accuracy'.format(ind)])
 
-    val_acc = val_acc/parameters.CGRAM_NUM_CHANNELS
-    train_acc = train_acc/parameters.CGRAM_NUM_CHANNELS
+    val_acc = val_acc/parameters.SGRAM_NUM_CHANNELS
+    train_acc = train_acc/parameters.SGRAM_NUM_CHANNELS
 
     #Plot accuracy
     fig = plt.figure()
@@ -83,9 +83,8 @@ if __name__ == '__main__':
     data_entries = create_mixtures.build_train_dataset()
     (train_input, train_target) = dataEntriesToArray(data_entries)
 
-    net = initNet(train_input.shape[1], [parameters.CGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS+1])
+    net = initNet(train_input.shape[1], [parameters.SGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS+1])
 
-    #Make a callback to save net with best accuracy on validation set
     history = net.fit(train_input, train_target, batch_size=100, nb_epoch=parameters.MAX_EPOCHS_TRAIN, validation_split=0.15)
     plotTrainAccuracy(history)
 

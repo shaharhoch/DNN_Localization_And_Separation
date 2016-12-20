@@ -125,42 +125,12 @@ def applyIbmToSignal(signal_in, ibm=None):
     assert isinstance(signal_in, numpy.ndarray)
     if(ibm is None):
         num_of_windows = int((float(len(signal_in) - parameters.WINDOW_SIZE_SAMPLES) / float(parameters.WINDOW_STEP_SAMPLES)) + 1)
-        ibm = numpy.ones((num_of_windows, parameters.CGRAM_NUM_CHANNELS))
+        ibm = numpy.ones((num_of_windows, parameters.SGRAM_NUM_CHANNELS))
     assert isinstance(ibm, numpy.ndarray)
 
-    gt_filtered = applyGammatoneFilterbank(signal_in)
-    gt_fir = getGammatoneFir()
-    fc = getGammatoneCenterFreq()
-
-    # Get raised cosine window
-    # Get time vector in range [0,1) in size of window
-    time = numpy.array(range(parameters.WINDOW_SIZE_SAMPLES))/parameters.WINDOW_SIZE_SAMPLES
-    cos_win = (1+numpy.cos(2*numpy.pi*time-numpy.pi))/2
-
-    signal_out = numpy.zeros(signal_in.shape)
-    for channel in range(parameters.CGRAM_NUM_CHANNELS):
-        mid_ear_coeff = 10**((loudness(fc[channel])-60)/20)
-        channel_signal = gt_filtered[channel,::-1]/mid_ear_coeff #Flip signal and divide by mid_ear_coeffs
-        channel_signal = scipy.signal.convolve(channel_signal, gt_fir[channel,:], 'same')
-        channel_signal = channel_signal[::-1]/mid_ear_coeff #Flip signal and divide by mid_ear_coeffs again
-
-        # Get signal channel weight
-        win_len = parameters.WINDOW_SIZE_SAMPLES
-        win_shift = parameters.WINDOW_STEP_SAMPLES
-        weight = numpy.zeros(len(signal_in))
-
-        for frame_ind in range(ibm.shape[0]):
-            start_ind = frame_ind*win_shift
-            weight[start_ind:start_ind+win_len] += ibm[frame_ind,channel]*cos_win
-
-        # The first and last win shifts of the signal didn't get summed up twice, so we need to deal with it separately.
-        # We don't have the ibm for it, but we can use the last ibm and assume it stays unchanged
-        weight[-1*win_shift:] += ibm[-1,channel]*cos_win[0:win_shift]
-        weight[0:win_shift] += ibm[0,channel]*cos_win[-1*win_shift:]
-
-        signal_out = signal_out + weight*channel_signal
-
-    return signal_out
+    stft = getStft(signal_in)
+    masked_stft = stft*ibm
+    return getIstft(masked_stft)
 
 def getCochleagram(audio_in):
     assert isinstance(audio_in, numpy.ndarray)
@@ -217,3 +187,30 @@ def getILD(audio_in):
     #Avoid taking log of zero
     amplitude_ratio[amplitude_ratio == 0] = sys.float_info.min
     return 20*numpy.log10(amplitude_ratio)
+
+def getStft(in_signal):
+    assert isinstance(in_signal, numpy.ndarray)
+    assert len(in_signal.shape) == 1
+
+    win_size = parameters.WINDOW_SIZE_SAMPLES
+    win_shift = parameters.WINDOW_STEP_SAMPLES
+    window = numpy.hanning(win_size)
+    stft = numpy.array([numpy.fft.rfft(window * in_signal[i:i+win_size])
+                     for i in range(0, len(in_signal)-win_size+1, win_shift)])
+    return stft
+
+def getSpectrogram(in_signal):
+    return numpy.abs(getStft(in_signal))
+
+def getIstft(in_stft):
+    assert  isinstance(in_stft, numpy.ndarray)
+
+    win_size = parameters.WINDOW_SIZE_SAMPLES
+    win_shift = parameters.WINDOW_STEP_SAMPLES
+
+    out = numpy.zeros(win_shift*in_stft.shape[0] + (win_size-win_shift))
+
+    for n, i in enumerate(range(0, len(out) - win_size + 1, win_shift)):
+        out[i:i + win_size] += numpy.fft.irfft(in_stft[n,:])
+
+    return out
