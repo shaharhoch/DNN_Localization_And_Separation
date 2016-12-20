@@ -114,7 +114,7 @@ if __name__ == '__main__':
         avg_source_md = avg_source_md+performance['source_md']
 
     avg_source_fa = avg_source_fa/len(test_entries)
-    avg_source_md = avg_source_md / len(test_entries)
+    avg_source_md = avg_source_md/len(test_entries)
 
     print('Average Source FA: {0}%'.format(avg_source_fa*100))
     print('Average Source MD: {0}%'.format(avg_source_md*100))

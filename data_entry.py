@@ -278,7 +278,10 @@ class DataEntry():
         source_md = len([a for a in self.angles if a not in angles])/len(self.angles)
         performance['source_md'] = source_md
 
-        source_fa = len([a for a in angles if a not in self.angles])/len(angles)
+        if(len(angles) == 0):
+            source_fa = 0
+        else:
+            source_fa = len([a for a in angles if a not in self.angles])/len(angles)
         performance['source_fa'] = source_fa
 
         return performance
