@@ -1,8 +1,8 @@
 # This file contains all parameters of the project
 
 #DNN parameters
-DNN_HIDDEN_LAYER_SIZE = [512, 512, 512]
-MAX_EPOCHS_TRAIN = 25
+DNN_HIDDEN_LAYER_SIZE = [1024, 1024, 1024]
+MAX_EPOCHS_TRAIN = 2#25
 
 #Audio parameters
 SAMPLE_RATE_HZ = float(16e3)
