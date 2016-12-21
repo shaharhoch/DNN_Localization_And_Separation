@@ -213,9 +213,9 @@ def getMV(audio_in):
             cur_mv = W.dot(x_gal[time_ind,:])
 
             mv_norm = numpy.linalg.norm(cur_mv)
-            # This comes to avoid dividing by zero. The normalization will give zero in any case, because cur_mv is zero
-            mv_norm[mv_norm == 0] = sys.float_info.min
-            cur_mv /= mv_norm
+            # This comes to avoid dividing by zero
+            if(mv_norm != 0):
+                cur_mv /= mv_norm
 
             start_ind = MV_FEATURES_PER_BIN*channel_ind
             stop_ind = start_ind + MV_FEATURES_PER_BIN
