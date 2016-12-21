@@ -10,7 +10,7 @@ class TrainData():
         win_len = parameters.WINDOW_SIZE_SAMPLES
         win_step = parameters.WINDOW_STEP_SAMPLES
         num_of_windows_in_single = int(((sig_time * fs) - win_len) / win_step + 1)
-        num_of_windows = int(num_of_windows_in_single * parameters.NUM_OF_TEST_SIGNALS)
+        num_of_windows = int(num_of_windows_in_single * parameters.NUM_OF_TRAIN_SIGNALS)
 
         self.data_ind = 0
 
