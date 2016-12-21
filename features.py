@@ -268,13 +268,3 @@ def getIstft(in_stft):
 
     return out
 
-def meanVarianceNormalization(features):
-    assert isinstance(features, numpy.ndarray)
-    mean = numpy.mean(features,axis=0)
-    std = numpy.std(features, axis=0)
-    # If there are features with std==0 this means they are constant, which means that they will be 0.
-    # In this case we choose std=1, because if in the training phase the features are different we don't want to scale them,
-    # becasue we don't really know their distribution
-    std[std == 0] = 1
-    normalized_features = (features-mean)/std
-    return (normalized_features, mean, std)

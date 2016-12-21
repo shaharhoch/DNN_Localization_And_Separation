@@ -6,7 +6,7 @@ import scipy.io.wavfile
 import parameters
 import data_entry
 import sys
-
+import train_data
 
 def set_signal_length(signal, length_sec):
     signal_length_samples = int(length_sec*parameters.SAMPLE_RATE_HZ)
@@ -50,26 +50,29 @@ def getSourceSignals(file_list, orig_dir):
 def build_train_dataset():
     list_dir = os.listdir(parameters.TRAIN_SENTENCES_FOLDER)
 
-    data_entries = []
-    while(len(data_entries) < parameters.NUM_OF_TRAIN_SIGNALS):
+    train_data_inst = train_data.TrainData()
+    for ind in range(parameters.NUM_OF_TRAIN_SIGNALS):
         signal_list = getSourceSignals(list_dir, parameters.TRAIN_SENTENCES_FOLDER)
         record_folder_path = os.path.join(parameters.OUTPUT_FOLDER,
-                                          r'Train\Data_Set_{0}_Records'.format(len(data_entries)))
+                                          r'Train\Data_Set_{0}_Records'.format(ind+1))
         cur_data_entry = data_entry.DataEntry(signal_list, parameters.BRIR_FILE, record_folder_path)
-        data_entries.append(cur_data_entry)
+        train_data_inst.addDataEntry(cur_data_entry)
 
         # Save data-set record
         cur_data_entry.saveDataSetRecord()
 
         # Print progress
-        progress = int(100 * float(len(data_entries)) / parameters.NUM_OF_TRAIN_SIGNALS)
+        progress = int(100 * float(ind+1) / parameters.NUM_OF_TRAIN_SIGNALS)
         sys.stdout.write('Creating training data-set: {0:3d}% \r'.format(progress))
         sys.stdout.flush()
+
+    assert (train_data_inst.isDataFull() == True)
+    train_data_inst.meanVarianceNormalize()
 
     sys.stdout.write('\n')
     sys.stdout.flush()
     print('Done creating data-set')
-    return data_entries
+    return train_data_inst
 
 
 def build_test_dataset(mean, std):

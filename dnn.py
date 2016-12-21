@@ -1,8 +1,8 @@
 import os
 os.environ['KERAS_BACKEND'] = 'tensorflow'
 
-from keras.layers import Dense, Input, Merge
-from keras.models import Model, Sequential
+from keras.layers import Dense, Input
+from keras.models import Model
 from keras.optimizers import Adagrad
 from keras import callbacks
 import parameters
@@ -11,14 +11,14 @@ import numpy
 from data_entry import DataEntry
 import matplotlib.pyplot as plt
 import pickle
-import features
-import gc
+from train_data import TrainData
 
 TRAIN_DATA_FILE = 'train_data.pkl'
 
 def initNet(in_dim, out_dim):
     assert len(out_dim) == 2
 
+    print('Initializing DNN...')
     #Create input layer
     inputs = Input(shape = (in_dim,))
 
@@ -40,24 +40,8 @@ def initNet(in_dim, out_dim):
     optimizer = Adagrad()
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['categorical_accuracy'])
 
+    print('DNN Initialized.')
     return model
-
-def dataEntriesToArray(data_entries):
-    data_in = numpy.array([])
-
-    #Init data target
-    data_target = []
-    for ind in range(parameters.SGRAM_NUM_CHANNELS):
-        data_target.append(numpy.array([]))
-
-    for entry in data_entries:
-        assert isinstance(entry, DataEntry)
-        data_in = DataEntry.generalizedConcat((data_in, entry.features), dim = 0)
-
-        for ind in range(len(data_target)):
-            data_target[ind] = DataEntry.generalizedConcat((data_target[ind], entry.targets[ind]), dim=0)
-
-    return (data_in, data_target)
 
 def plotTrainAccuracy(history):
     assert isinstance(history, callbacks.History)
@@ -84,43 +68,51 @@ def plotTrainAccuracy(history):
     plt.savefig(save_path)
     plt.close(fig)
 
-if __name__ == '__main__':
-    training_data_file = os.path.join(parameters.OUTPUT_FOLDER, TRAIN_DATA_FILE)
-    if(os.path.exists(training_data_file)):
-        print('Found training data file, loading...')
-        file_read = open(training_data_file, 'rb')
-        (train_input, train_target, mean, std) = pickle.load(file_read)
-        file_read.close()
-        print('Training data loaded.')
-    else:
-        print('Training data file was not found.')
-        data_entries = create_mixtures.build_train_dataset()
-        (train_input, train_target) = dataEntriesToArray(data_entries)
-        (train_input, mean, std) = features.meanVarianceNormalization(train_input)
-
-        print('Saving training data file...')
-        file_write = open(training_data_file, 'wb')
-        pickle.dump((train_input, train_target, mean, std), file_write)
-        file_write.close()
-        del data_entries #Loose the reference to data_entries, so that the garbage collector will free this memory.
-        gc.collect()
-        print('Training data file saved.')
-
-    net = initNet(train_input.shape[1], [parameters.SGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS+1])
-    history = net.fit(train_input, train_target, batch_size=100, nb_epoch=parameters.MAX_EPOCHS_TRAIN, validation_split=0.15)
-    plotTrainAccuracy(history)
-    test_entries = create_mixtures.build_test_dataset(mean, std)
+def estimateTestPerformance(train_data, net):
+    assert isinstance(train_data, TrainData)
+    test_entries = create_mixtures.build_test_dataset(train_data.mean, train_data.std)
     avg_source_fa = 0
     avg_source_md = 0
     for entry in test_entries:
         assert isinstance(entry, DataEntry)
         performance = entry.estimateNetPerformance(net)
-        avg_source_fa = avg_source_fa+performance['source_fa']
-        avg_source_md = avg_source_md+performance['source_md']
+        avg_source_fa = avg_source_fa + performance['source_fa']
+        avg_source_md = avg_source_md + performance['source_md']
 
-    avg_source_fa = avg_source_fa/len(test_entries)
-    avg_source_md = avg_source_md/len(test_entries)
+    avg_source_fa = avg_source_fa / len(test_entries)
+    avg_source_md = avg_source_md / len(test_entries)
 
-    print('Average Source FA: {0}%'.format(avg_source_fa*100))
-    print('Average Source MD: {0}%'.format(avg_source_md*100))
+    print('Average Source FA: {0}%'.format(avg_source_fa * 100))
+    print('Average Source MD: {0}%'.format(avg_source_md * 100))
+
+def getTrainingData():
+    training_data_file = os.path.join(parameters.OUTPUT_FOLDER, TRAIN_DATA_FILE)
+    if (os.path.exists(training_data_file)):
+        print('Found training data file, loading...')
+        file_read = open(training_data_file, 'rb')
+        train_data = pickle.load(file_read)
+        file_read.close()
+        print('Training data loaded.')
+    else:
+        print('Training data file was not found.')
+        train_data = create_mixtures.build_train_dataset()
+
+        print('Saving training data file...')
+        file_write = open(training_data_file, 'wb')
+        pickle.dump(train_data, file_write)
+        print('Training data file saved.')
+
+    assert isinstance(train_data, TrainData)
+    return train_data
+
+if __name__ == '__main__':
+    train_data = getTrainingData()
+    assert isinstance(train_data, TrainData)
+
+    net = initNet(parameters.SIZE_OF_FEATURE_VEC, [parameters.SGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS+1])
+    history = net.fit(train_data.getTrainInputs(), train_data.getTrainTargets(), batch_size=100,
+                      nb_epoch=parameters.MAX_EPOCHS_TRAIN, validation_split=0.15)
+
+    plotTrainAccuracy(history)
+    estimateTestPerformance(train_data, net)
 
