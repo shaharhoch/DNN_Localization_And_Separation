@@ -151,6 +151,9 @@ class DataEntry():
         mfcc = features.getMFCC(self.res_signal)
         self.features = numpy.hstack((self.features, mfcc))
 
+        #Add mfcc deltas
+        mfcc_deltas = features.getDeltas(mfcc)
+        self.features = numpy.hstack((self.features, mfcc_deltas))
 
     def saveDataSetRecord(self):
         folder = self.save_folder
@@ -303,3 +306,6 @@ class DataEntry():
             out_stacked = numpy.concatenate((out_stacked, data), axis=dim)
 
         return out_stacked
+
+    def meanVarianceNormalize(self, mean, std):
+        self.features = (self.features-mean)/std

@@ -223,6 +223,24 @@ def getMV(audio_in):
 
     return mv
 
+# N is the number of elements you look on in the past and in the future
+# The implementation of this function is according to this:
+# http://practicalcryptography.com/miscellaneous/machine-learning/guide-mel-frequency-cepstral-coefficients-mfccs/
+def getDeltas(feature, N=2):
+    assert isinstance(feature, numpy.ndarray)
+    padded_feature = numpy.concatenate((feature[0:N,:], feature, feature[-N:,:]), axis=0)
+
+    deltas = numpy.zeros(feature.shape)
+    sum_N = sum([n**2 for n in range(1,N+1)])
+    for time_ind in range(deltas.shape[0]):
+        feature_time_ind = time_ind+N
+        for n in range(1,N+1):
+            deltas[time_ind,:] += n*(padded_feature[feature_time_ind+n,:]-padded_feature[feature_time_ind-n,:])/2
+        deltas[time_ind, :] /= sum_N
+
+    return deltas
+
+
 def getStft(in_signal):
     assert isinstance(in_signal, numpy.ndarray)
     assert len(in_signal.shape) == 1
@@ -249,3 +267,14 @@ def getIstft(in_stft):
         out[i:i + win_size] += numpy.fft.irfft(in_stft[n,:])
 
     return out
+
+def meanVarianceNormalization(features):
+    assert isinstance(features, numpy.ndarray)
+    mean = numpy.mean(features,axis=0)
+    std = numpy.std(features, axis=0)
+    # If there are features with std==0 this means they are constant, which means that they will be 0.
+    # In this case we choose std=1, because if in the training phase the features are different we don't want to scale them,
+    # becasue we don't really know their distribution
+    std[std == 0] = 1
+    normalized_features = (features-mean)/std
+    return (normalized_features, mean, std)

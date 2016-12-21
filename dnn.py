@@ -11,6 +11,7 @@ import numpy
 from data_entry import DataEntry
 import matplotlib.pyplot as plt
 import pickle
+import features
 
 TRAIN_DATA_FILE = 'train_data.pkl'
 
@@ -87,24 +88,25 @@ if __name__ == '__main__':
     if(os.path.exists(training_data_file)):
         print('Found training data file, loading...')
         file_read = open(training_data_file, 'rb')
-        (train_input, train_target) = pickle.load(file_read)
+        (train_input, train_target, mean, std) = pickle.load(file_read)
         file_read.close()
         print('Training data loaded.')
     else:
         print('Training data file was not found.')
         data_entries = create_mixtures.build_train_dataset()
         (train_input, train_target) = dataEntriesToArray(data_entries)
+        (train_input, mean, std) = features.meanVarianceNormalization(train_input)
 
         print('Saving training data file...')
         file_write = open(training_data_file, 'wb')
-        pickle.dump((train_input, train_target), file_write)
+        pickle.dump((train_input, train_target, mean, std), file_write)
         file_write.close()
         print('Training data file saved.')
 
     net = initNet(train_input.shape[1], [parameters.SGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS+1])
     history = net.fit(train_input, train_target, batch_size=100, nb_epoch=parameters.MAX_EPOCHS_TRAIN, validation_split=0.15)
     plotTrainAccuracy(history)
-    test_entries = create_mixtures.build_test_dataset()
+    test_entries = create_mixtures.build_test_dataset(mean, std)
     avg_source_fa = 0
     avg_source_md = 0
     for entry in test_entries:

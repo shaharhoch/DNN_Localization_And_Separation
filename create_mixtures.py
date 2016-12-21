@@ -72,7 +72,7 @@ def build_train_dataset():
     return data_entries
 
 
-def build_test_dataset():
+def build_test_dataset(mean, std):
     list_dir = os.listdir(parameters.TEST_SENTENCES_FOLDER)
 
     data_entries = []
@@ -81,6 +81,7 @@ def build_test_dataset():
         record_folder_path = os.path.join(parameters.OUTPUT_FOLDER,
                                           r'Test\Data_Set_{0}_Records'.format(len(data_entries)))
         cur_data_entry = data_entry.DataEntry(signal_list, parameters.BRIR_FILE, record_folder_path)
+        cur_data_entry.meanVarianceNormalize(mean, std)
         data_entries.append(cur_data_entry)
 
         # Save data-set record
