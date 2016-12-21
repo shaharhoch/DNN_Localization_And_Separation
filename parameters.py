@@ -2,7 +2,7 @@
 
 #DNN parameters
 DNN_HIDDEN_LAYER_SIZE = [1024, 1024, 1024]
-MAX_EPOCHS_TRAIN = 2#25
+MAX_EPOCHS_TRAIN = 25
 
 #Audio parameters
 SAMPLE_RATE_HZ = float(16e3)

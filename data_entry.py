@@ -139,16 +139,19 @@ class DataEntry():
         return min_idx
 
     def updateFeaturesFromResSignal(self):
-        self.features = numpy.array([])
-
-        mfcc = features.getMFCC(self.res_signal)
-        self.features = mfcc
+        ipd = features.getIPD(self.res_signal)
+        self.features = ipd
 
         ild = features.getILD(self.res_signal)
         self.features = numpy.hstack((self.features, ild))
 
-        ipd = features.getIPD(self.res_signal)
-        self.features = numpy.hstack((self.features, ipd))
+        mv = features.getMV(self.res_signal)
+        self.features = numpy.hstack((self.features, mv))
+
+        # TODO: Remove mfcc feature from comment. It is only for testing.
+        #mfcc = features.getMFCC(self.res_signal)
+        #self.features = numpy.hstack((self.features, mfcc))
+
 
     def saveDataSetRecord(self):
         folder = self.save_folder

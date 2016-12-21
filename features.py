@@ -159,11 +159,8 @@ def getIPD(audio_in):
     assert isinstance(audio_in, numpy.ndarray)
     assert (audio_in.shape[1] == 2)
 
-    channel1 = divideSignalToWindows(audio_in[:,0])
-    channel2 = divideSignalToWindows(audio_in[:,1])
-
-    channel1_fft = numpy.fft.rfft(channel1, axis=1)
-    channel2_fft = numpy.fft.rfft(channel2, axis=1)
+    channel1_fft = getStft(audio_in[:,0])
+    channel2_fft = getStft(audio_in[:,1])
 
     #Avoid dividing by zero- change every elemnt equal to zero to a very small value
     channel2_fft[channel2_fft == 0] = sys.float_info.min
@@ -173,11 +170,8 @@ def getILD(audio_in):
     assert isinstance(audio_in, numpy.ndarray)
     assert (audio_in.shape[1] == 2)
 
-    channel1 = divideSignalToWindows(audio_in[:, 0])
-    channel2 = divideSignalToWindows(audio_in[:, 1])
-
-    channel1_fft = numpy.fft.rfft(channel1, axis=1)
-    channel2_fft = numpy.fft.rfft(channel2, axis=1)
+    channel1_fft = getStft(audio_in[:, 0])
+    channel2_fft = getStft(audio_in[:, 1])
 
     # Avoid dividing by zero- change every elemnt equal to zero to a very small value
     channel2_fft[channel2_fft == 0] = sys.float_info.min
@@ -187,6 +181,40 @@ def getILD(audio_in):
     #Avoid taking log of zero
     amplitude_ratio[amplitude_ratio == 0] = sys.float_info.min
     return 20*numpy.log10(amplitude_ratio)
+
+def getMV(audio_in):
+    MV_FEATURES_PER_BIN = 4
+
+    assert  isinstance(audio_in, numpy.ndarray)
+
+    channel1_fft = getStft(audio_in[:, 0])
+    channel2_fft = getStft(audio_in[:, 1])
+
+    mv = numpy.zeros([channel1_fft.shape[0], MV_FEATURES_PER_BIN*channel1_fft.shape[1]])
+    for channel_ind in range(channel1_fft.shape[1]):
+        x_vec = numpy.column_stack((channel1_fft[:, channel_ind], channel2_fft[:, channel_ind]))
+        x_gal = x_vec/numpy.array(2*[numpy.linalg.norm(x_vec, axis=1)]).T
+
+        # Get W matrix
+        W_matrix_mean = numpy.zeros(2*[x_gal.shape[1]], dtype=numpy.complex128)
+        for time_ind in range(x_gal.shape[0]):
+            W_matrix_mean += numpy.outer(x_gal[time_ind,:], x_gal[time_ind,:].conj().T)
+        W_matrix_mean /= x_gal.shape[0]
+
+        # Take only the eigen-vectors, ignore the eigen-values
+        # We use transpose because the eigen-vectors should be the rows of W, but the eig function returns them as columns
+        W = numpy.linalg.eig(W_matrix_mean)[1].T
+
+        # Get MV features
+        for time_ind in range(x_gal.shape[0]):
+            cur_mv = W.dot(x_gal[time_ind,:])
+            cur_mv /= numpy.linalg.norm(cur_mv)
+
+            start_ind = MV_FEATURES_PER_BIN*channel_ind
+            stop_ind = start_ind + MV_FEATURES_PER_BIN
+            mv[time_ind, start_ind:stop_ind] = numpy.array([cur_mv[0].real, cur_mv[0].imag, cur_mv[1].real, cur_mv[1].imag])
+
+    return mv
 
 def getStft(in_signal):
     assert isinstance(in_signal, numpy.ndarray)
