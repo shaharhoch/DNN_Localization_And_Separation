@@ -102,7 +102,7 @@ if __name__ == '__main__':
         file_write = open(training_data_file, 'wb')
         pickle.dump((train_input, train_target, mean, std), file_write)
         file_write.close()
-        data_entries = [] #Loose the reference to data_entries, so that the garbage collector will free this memory.
+        del data_entries #Loose the reference to data_entries, so that the garbage collector will free this memory.
         gc.collect()
         print('Training data file saved.')
 
