@@ -148,9 +148,8 @@ class DataEntry():
         mv = features.getMV(self.res_signal)
         self.features = numpy.hstack((self.features, mv))
 
-        # TODO: Remove mfcc feature from comment. It is only for testing.
-        #mfcc = features.getMFCC(self.res_signal)
-        #self.features = numpy.hstack((self.features, mfcc))
+        mfcc = features.getMFCC(self.res_signal)
+        self.features = numpy.hstack((self.features, mfcc))
 
 
     def saveDataSetRecord(self):
