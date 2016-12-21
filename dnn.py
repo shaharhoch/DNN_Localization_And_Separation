@@ -10,10 +10,10 @@ import create_mixtures
 import numpy
 from data_entry import DataEntry
 import matplotlib.pyplot as plt
-import pickle
+import dill
 from train_data import TrainData
 
-TRAIN_DATA_FILE = 'train_data.pkl'
+TRAIN_DATA_FILE = 'train_data.dill'
 
 def initNet(in_dim, out_dim):
     assert len(out_dim) == 2
@@ -90,7 +90,7 @@ def getTrainingData():
     if (os.path.exists(training_data_file)):
         print('Found training data file, loading...')
         file_read = open(training_data_file, 'rb')
-        train_data = pickle.load(file_read)
+        train_data = dill.load(file_read)
         file_read.close()
         print('Training data loaded.')
     else:
@@ -99,7 +99,7 @@ def getTrainingData():
 
         print('Saving training data file...')
         file_write = open(training_data_file, 'wb')
-        pickle.dump(train_data, file_write)
+        dill.dump(train_data, file_write)
         print('Training data file saved.')
 
     assert isinstance(train_data, TrainData)
