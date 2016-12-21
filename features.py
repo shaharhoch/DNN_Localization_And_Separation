@@ -194,8 +194,9 @@ def getMV(audio_in):
     for channel_ind in range(channel1_fft.shape[1]):
         x_vec = numpy.column_stack((channel1_fft[:, channel_ind], channel2_fft[:, channel_ind]))
         x_norm = numpy.array(2*[numpy.linalg.norm(x_vec, axis=1)]).T
+        # This comes to avoid dividing by zero. The normalization will give zero in any case, because x_vec is zero
+        x_norm[x_norm == 0] = sys.float_info.min
         x_gal = x_vec/x_norm
-        x_gal[x_norm == 0] = 0 # This comes to handle the case that v_vec is 0, so normalization returns NaN
 
         # Get W matrix
         W_matrix_mean = numpy.zeros(2*[x_gal.shape[1]], dtype=numpy.complex128)
@@ -210,7 +211,11 @@ def getMV(audio_in):
         # Get MV features
         for time_ind in range(x_gal.shape[0]):
             cur_mv = W.dot(x_gal[time_ind,:])
-            cur_mv /= numpy.linalg.norm(cur_mv)
+
+            mv_norm = numpy.linalg.norm(cur_mv)
+            # This comes to avoid dividing by zero. The normalization will give zero in any case, because cur_mv is zero
+            mv_norm[mv_norm == 0] = sys.float_info.min
+            cur_mv /= mv_norm
 
             start_ind = MV_FEATURES_PER_BIN*channel_ind
             stop_ind = start_ind + MV_FEATURES_PER_BIN
