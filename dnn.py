@@ -12,6 +12,7 @@ from data_entry import DataEntry
 import matplotlib.pyplot as plt
 import pickle
 import features
+import gc
 
 TRAIN_DATA_FILE = 'train_data.pkl'
 
@@ -101,6 +102,8 @@ if __name__ == '__main__':
         file_write = open(training_data_file, 'wb')
         pickle.dump((train_input, train_target, mean, std), file_write)
         file_write.close()
+        data_entries = [] #Loose the reference to data_entries, so that the garbage collector will free this memory.
+        gc.collect()
         print('Training data file saved.')
 
     net = initNet(train_input.shape[1], [parameters.SGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS+1])
