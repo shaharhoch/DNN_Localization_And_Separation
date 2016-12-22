@@ -71,6 +71,7 @@ def plotTrainAccuracy(history):
 
 def estimateTestPerformance(train_data, net):
     assert isinstance(train_data, TrainData)
+
     test_entries = create_mixtures.build_test_dataset(train_data.mean, train_data.std)
     avg_source_fa = 0
     avg_source_md = 0

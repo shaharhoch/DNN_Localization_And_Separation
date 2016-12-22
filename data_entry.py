@@ -238,6 +238,44 @@ class DataEntry():
         return mixed_ibm
 
     @classmethod
+    def dnnTargetToLimitedSourcesMixedIbm(cls, dnn_target):
+        # Get normal mixed IBM
+        normal_mixed_ibm = cls.dnnTargetToMixedIbm(dnn_target)
+        assert isinstance(normal_mixed_ibm, numpy.ndarray)
+
+        # Get the IBM of only the top angles
+        angle_ind = []
+
+        (angle_ind_tmp, angle_count_tmp) = numpy.unique(normal_mixed_ibm, return_counts=True)
+        angle_ind_tmp = list(angle_ind_tmp)
+        angle_count_tmp = list(angle_count_tmp)
+        # If noise index is in the list, remove it, because we want the top sources, not including noise
+        if (parameters.NUM_OF_DIRECTIONS + 1 in angle_ind_tmp):
+            noise_ind = angle_ind_tmp.index(parameters.NUM_OF_DIRECTIONS)
+            if (angle_count_tmp[noise_ind] > parameters.MIXED_IBM_IDENTIFICATION_TH):
+                angle_ind.append(parameters.NUM_OF_DIRECTIONS)
+            del angle_ind_tmp[noise_ind]
+            del angle_count_tmp[noise_ind]
+
+        # Get only the top angles
+        for ind in range(parameters.NUM_OF_SOURCES_IN_SIGNAL):
+            angle_arr_ind = numpy.array(angle_count_tmp).argmax()
+            angle_ind.append(angle_ind_tmp[angle_arr_ind])
+            del angle_count_tmp[angle_arr_ind]
+            del angle_ind_tmp[angle_arr_ind]
+
+        # Now build the IBM of only the top directions
+        mixed_ibm = numpy.zeros((dnn_target[0].shape[0], len(dnn_target)))
+        for time_dim in range(mixed_ibm.shape[0]):
+            for freq_dim in range(mixed_ibm.shape[1]):
+                probability_of_top_directions = numpy.array(
+                    [dnn_target[freq_dim][time_dim, int(angle)] for angle in angle_ind])
+                max_angle_ind = probability_of_top_directions.argmax()
+                mixed_ibm[time_dim, freq_dim] = angle_ind[max_angle_ind]
+
+        return mixed_ibm
+
+    @classmethod
     def mixedIbmToIbms(cls, mixed_ibm):
         assert isinstance(mixed_ibm, numpy.ndarray)
 
@@ -265,7 +303,7 @@ class DataEntry():
         net_output = net.predict(self.features)
 
         #Get predicted mixed ibm and save it
-        mixed_ibm = self.dnnTargetToMixedIbm(net_output)
+        mixed_ibm = self.dnnTargetToLimitedSourcesMixedIbm(net_output)
         if(save == True):
             fig = plt.figure()
             plt.imshow(parameters.NUM_OF_DIRECTIONS - mixed_ibm.T, aspect='auto',
