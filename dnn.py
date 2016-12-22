@@ -14,6 +14,7 @@ import dill
 from train_data import TrainData
 
 TRAIN_DATA_FILE = 'train_data.dill'
+NET_SAVE_FILE = 'net_save.hdf5'
 
 def initNet(in_dim, out_dim):
     assert len(out_dim) == 2
@@ -105,6 +106,16 @@ def getTrainingData():
     assert isinstance(train_data, TrainData)
     return train_data
 
+def saveNet(net):
+    assert isinstance(net, Model)
+
+    print('Saving DNN...')
+
+    net_file_path = os.path.join(parameters.OUTPUT_FOLDER, NET_SAVE_FILE)
+    net.save(net_file_path, overwrite=True)
+
+    print('DNN saved.')
+
 if __name__ == '__main__':
     train_data = getTrainingData()
     assert isinstance(train_data, TrainData)
@@ -112,7 +123,7 @@ if __name__ == '__main__':
     net = initNet(parameters.SIZE_OF_FEATURE_VEC, [parameters.SGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS+1])
     history = net.fit(train_data.getTrainInputs(), train_data.getTrainTargets(), batch_size=100,
                       nb_epoch=parameters.MAX_EPOCHS_TRAIN, validation_split=0.15)
+    saveNet(net)
 
     plotTrainAccuracy(history)
     estimateTestPerformance(train_data, net)
-

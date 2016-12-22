@@ -5,6 +5,7 @@ import numpy.fft
 import sys
 import scipy.signal
 import scipy.io
+import scipy.fftpack
 
 def getMFCC(audio_in):
     assert isinstance(audio_in, numpy.ndarray)
@@ -83,29 +84,29 @@ def loudness(freq):
     loud = 4.2 + afy * (dB - cfy) / (1 + bfy * (dB - cfy))
     return loud
 
-def getGammatoneCenterFreq():
+def getGammatoneCenterFreq(num_channels=parameters.CGRAM_NUM_CHANNELS):
     # Find center frequencies- they are equally spaced on the erb scale
     min_erb = hz2erb(parameters.CGRAM_MIN_FREQ)
     max_erb = hz2erb(parameters.CGRAM_MAX_FREQ)
-    center_freq_erb = numpy.linspace(min_erb, max_erb, parameters.CGRAM_NUM_CHANNELS)
+    center_freq_erb = numpy.linspace(min_erb, max_erb, num_channels)
     # Get center frequencies in hz. They are named fc in the gammatone definition
     fc = erb2hz(center_freq_erb)
 
     return fc
 
-def getGammatoneFir():
+def getGammatoneFir(num_channels=parameters.CGRAM_NUM_CHANNELS):
     GT_FILTER_ORDER = 4
     GT_LENGTH_MS = 128  # Not sure what to use here. Saw this value is being used.
     GT_LENGTH_SAMPLES = int(GT_LENGTH_MS * 1e-3 * parameters.SAMPLE_RATE_HZ)
 
-    fc = getGammatoneCenterFreq()
+    fc = getGammatoneCenterFreq(num_channels)
     # Get each filters bandwidth. named b in the gammatone definition
     b = 1.019 * 24.7 * (4.37 * fc / 1000 + 1)
 
     # Build filters impulse responses and filter the signal with them
     time = numpy.array(range(GT_LENGTH_SAMPLES)) / parameters.SAMPLE_RATE_HZ
-    gt_fir = numpy.zeros((parameters.CGRAM_NUM_CHANNELS, GT_LENGTH_SAMPLES))
-    for channel in range(parameters.CGRAM_NUM_CHANNELS):
+    gt_fir = numpy.zeros((num_channels, GT_LENGTH_SAMPLES))
+    for channel in range(num_channels):
         gain = 10 ** ((loudness(fc[channel]) - 60) / 20) / 3 * (2 * numpy.pi * b[channel] / parameters.SAMPLE_RATE_HZ) ** 4
 
         # In the impulse response we multiply the time by the sampling frequency to make it unit-less
@@ -113,10 +114,10 @@ def getGammatoneFir():
 
     return gt_fir
 
-def applyGammatoneFilterbank(signal_in):
-    gt_fir = getGammatoneFir()
-    gt_filtered = numpy.zeros((parameters.CGRAM_NUM_CHANNELS, len(signal_in)))
-    for channel in range(parameters.CGRAM_NUM_CHANNELS):
+def applyGammatoneFilterbank(signal_in, num_channels=parameters.CGRAM_NUM_CHANNELS):
+    gt_fir = getGammatoneFir(num_channels)
+    gt_filtered = numpy.zeros((num_channels, len(signal_in)))
+    for channel in range(num_channels):
         gt_filtered[channel,:] = scipy.signal.convolve(signal_in, gt_fir[channel,:], 'same')
 
     return gt_filtered
@@ -268,3 +269,32 @@ def getIstft(in_stft):
 
     return out
 
+def getGF(signal_in):
+    assert isinstance(signal_in, numpy.ndarray)
+    if(len(signal_in.shape) > 1):
+        signal_in = signal_in[:,0]
+
+    gt_filtered = applyGammatoneFilterbank(signal_in, parameters.GFCC_NUM_CHANNELS)
+
+    # Downsample the gammatone filtered signal to 100Hz
+    num_sampled = int(gt_filtered.shape[1]*(100.0/parameters.SAMPLE_RATE_HZ))
+    gt_100Hz = scipy.signal.resample(gt_filtered, num_sampled, axis=1)
+
+    # We need to align the sampled signal to our windows structure. 100Hz corresponds to a sample every 10ms (win_shift),
+    # but this will give us one extra window. The first sample should come after 20ms (after a win_len), and then a sample
+    # should come every 10ms. This means we need to get rid of the first sample, and the signal will be aligned.
+    gt_100Hz_aligned = gt_100Hz[:,1:]
+
+    # Apply cubic root compression to the signal
+    gf_feature = numpy.abs(gt_100Hz_aligned)**(1/3)
+
+    # Take the transpose of the signal, because currently axis 1 is the time axis, and the convention is axis 0
+    gf_feature = gf_feature.T
+    return gf_feature
+
+def getGFCC(signal_in):
+    gf_feature = getGF(signal_in)
+    gf_dct = scipy.fftpack.dct(gf_feature, axis=1, type=2, norm='ortho')
+    gfcc_feature = gf_dct[:,0:parameters.GFCC_NUM_COEFF]
+
+    return gfcc_feature

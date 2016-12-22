@@ -151,9 +151,17 @@ class DataEntry():
         mfcc = features.getMFCC(self.res_signal)
         self.features = numpy.hstack((self.features, mfcc))
 
-        #Add mfcc deltas
+        # Add mfcc deltas
         mfcc_deltas = features.getDeltas(mfcc)
         self.features = numpy.hstack((self.features, mfcc_deltas))
+
+        gfcc = features.getGFCC(self.res_signal)
+        self.features = numpy.hstack((self.features, gfcc))
+
+        # Add GFCC deltas
+        gfcc_deltas = features.getDeltas(gfcc)
+        self.features = numpy.hstack((self.features, gfcc_deltas))
+
 
     def saveDataSetRecord(self):
         folder = self.save_folder
