@@ -26,6 +26,7 @@ class DataEntry():
         brir = numpy.array(brir_file.get('Data.IR'))
         pos_def = numpy.array(brir_file.get('SourcePosition'))
 
+        self.original_signal = in_signals
         self.save_folder = save_folder
         self.signals = []
         self.angles = []
@@ -169,17 +170,17 @@ class DataEntry():
             os.makedirs(folder)
 
         #Save original wav files
-        for ind in range(len(self.signals)):
+        for ind in range(len(self.original_signal)):
             save_path = os.path.join(folder, 'Original_{0}.wav'.format(ind+1))
-            scipy.io.wavfile.write(save_path, int(parameters.SAMPLE_RATE_HZ), self.signals[ind])
+            scipy.io.wavfile.write(save_path, int(parameters.SAMPLE_RATE_HZ), self.original_signal[ind])
 
         #Save mixture wav file
         save_path = os.path.join(folder, 'Mixture.wav')
         scipy.io.wavfile.write(save_path, int(parameters.SAMPLE_RATE_HZ), self.res_signal)
 
         #Save Spectrogram images
-        for ind in range(len(self.signals)):
-            sgram = features.getSpectrogram(self.signals[ind][:,0])
+        for ind in range(len(self.original_signal)):
+            sgram = features.getSpectrogram(self.original_signal[ind])
             fig = plt.figure()
             plt.imshow(sgram.T[::-1,:], aspect='auto',
                        extent=(0, parameters.SIGNAL_LENGTH_SEC * 1000, 0, parameters.SAMPLE_RATE_HZ / 2))
