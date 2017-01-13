@@ -75,7 +75,7 @@ def build_train_dataset():
     return train_data_inst
 
 
-def build_test_dataset(mean, std):
+def build_test_dataset(mean=0, std=1):
     list_dir = os.listdir(parameters.TEST_SENTENCES_FOLDER)
 
     data_entries = []
