@@ -15,7 +15,7 @@ class TrainData():
         self.data_ind = 0
 
         # Input input feature array
-        self.train_input = numpy.zeros((num_of_windows, parameters.SIZE_OF_FEATURE_VEC))
+        self.train_input = numpy.zeros((num_of_windows, parameters.getSizeOfFeatureVec()))
 
         # Init output target list of vectors
         self.train_targets = []
@@ -23,8 +23,8 @@ class TrainData():
             self.train_targets.append(numpy.zeros((num_of_windows, parameters.NUM_OF_DIRECTIONS + 1)))
 
         #Init mean and variance to values that won't do anything
-        self.mean = numpy.zeros(parameters.SIZE_OF_FEATURE_VEC)
-        self.std = numpy.ones(parameters.SIZE_OF_FEATURE_VEC)
+        self.mean = numpy.zeros(parameters.getSizeOfFeatureVec())
+        self.std = numpy.ones(parameters.getSizeOfFeatureVec())
 
         #This is used to lock data after normalization, because we can't add data after we normalize it
         self.data_locked = False

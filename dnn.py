@@ -125,7 +125,7 @@ def main():
     train_data = getTrainingData()
     assert isinstance(train_data, TrainData)
 
-    net = initNet(parameters.SIZE_OF_FEATURE_VEC, [parameters.SGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS + 1])
+    net = initNet(parameters.getSizeOfFeatureVec(), [parameters.SGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS + 1])
     history = net.fit(train_data.getTrainInputs(), train_data.getTrainTargets(), batch_size=100,
                       nb_epoch=parameters.MAX_EPOCHS_TRAIN, validation_split=0.15)
     saveNet(net)

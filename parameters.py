@@ -56,3 +56,12 @@ MIXED_IBM_IDENTIFICATION_TH = 1500
 SIZE_OF_FEATURE_VEC = (2 * MFCC_NUM_COEFF) + SGRAM_NUM_CHANNELS + SGRAM_NUM_CHANNELS + \
                       (4 * SGRAM_NUM_CHANNELS) + (2 * GFCC_NUM_COEFF)
 USE_MONAURAL_FEATURES = True
+
+def getSizeOfFeatureVec():
+    if(USE_MONAURAL_FEATURES == True):
+        size_of_feature_vec = (2 * MFCC_NUM_COEFF) + SGRAM_NUM_CHANNELS + SGRAM_NUM_CHANNELS + \
+                              (4 * SGRAM_NUM_CHANNELS) + (2 * GFCC_NUM_COEFF)
+    else:
+        size_of_feature_vec = SGRAM_NUM_CHANNELS + SGRAM_NUM_CHANNELS + (4 * SGRAM_NUM_CHANNELS)
+
+    return size_of_feature_vec
