@@ -133,6 +133,46 @@ def applyIbmToSignal(signal_in, ibm=None):
     masked_stft = stft*ibm
     return getIstft(masked_stft)
 
+def applyIbmToSignalGammatone(signal_in, ibm=None):
+    assert isinstance(signal_in, numpy.ndarray)
+    if(ibm is None):
+        num_of_windows = int((float(len(signal_in) - parameters.WINDOW_SIZE_SAMPLES) / float(parameters.WINDOW_STEP_SAMPLES)) + 1)
+        ibm = numpy.ones((num_of_windows, parameters.CGRAM_NUM_CHANNELS))
+    assert isinstance(ibm, numpy.ndarray)
+
+    gt_filtered = applyGammatoneFilterbank(signal_in)
+    gt_fir = getGammatoneFir()
+    fc = getGammatoneCenterFreq()
+
+    # Get raised cosine window
+    # Get time vector in range [0,1) in size of window
+    time = numpy.array(range(parameters.WINDOW_SIZE_SAMPLES))/parameters.WINDOW_SIZE_SAMPLES
+    cos_win = (1+numpy.cos(2*numpy.pi*time-numpy.pi))/2
+
+    signal_out = numpy.zeros(signal_in.shape)
+    for channel in range(parameters.CGRAM_NUM_CHANNELS):
+        mid_ear_coeff = 10**((loudness(fc[channel])-60)/20)
+        channel_signal = scipy.signal.convolve(gt_filtered[channel,:], gt_fir[channel,::-1])
+        channel_signal = channel_signal/(mid_ear_coeff**2) #Divide by mid_ear_coeffs again
+
+        # Get signal channel weight
+        win_len = parameters.WINDOW_SIZE_SAMPLES
+        win_shift = parameters.WINDOW_STEP_SAMPLES
+        weight = numpy.zeros(len(channel_signal))
+
+        for frame_ind in range(ibm.shape[0]):
+            start_ind = frame_ind*win_shift
+            weight[start_ind:start_ind+win_len] += ibm[frame_ind,channel]*cos_win
+
+        # The first and last win shifts of the signal didn't get summed up twice, so we need to deal with it separately.
+        # We don't have the ibm for it, but we can use the last ibm and assume it stays unchanged
+        weight[-1*win_shift:] += ibm[-1,channel]*cos_win[0:win_shift]
+        weight[0:win_shift] += ibm[0,channel]*cos_win[-1*win_shift:]
+
+        signal_out = signal_out + weight*channel_signal
+
+    return signal_out
+
 def getCochleagram(audio_in):
     assert isinstance(audio_in, numpy.ndarray)
     assert (audio_in.size % parameters.WINDOW_STEP_SAMPLES) == 0
