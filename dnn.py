@@ -127,7 +127,7 @@ def main():
 
     net = initNet(parameters.getSizeOfFeatureVec(), [parameters.SGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS + 1])
     history = net.fit(train_data.getTrainInputs(), train_data.getTrainTargets(), batch_size=100,
-                      nb_epoch=parameters.MAX_EPOCHS_TRAIN, validation_split=0.15)
+                      nb_epoch=parameters.MAX_EPOCHS_TRAIN, validation_split=0.15, verbose=2)
     saveNet(net)
 
     plotTrainAccuracy(history)
