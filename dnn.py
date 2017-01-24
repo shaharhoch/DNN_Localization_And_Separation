@@ -142,19 +142,19 @@ if __name__ == '__main__':
     parameters.USE_MONAURAL_FEATURES = False
     main()
 
-    print('Run number 1, STFT, monaural and binaural')
+    print('Run number 2, STFT, monaural and binaural')
     parameters.OUTPUT_FOLDER = out_folder_save + '_RUN_2'
     parameters.SGRAM_TYPE = 'STFT'
     parameters.USE_MONAURAL_FEATURES = True
     main()
 
-    print('Run number 1, Cgram, only binaural')
+    print('Run number 3, Cgram, only binaural')
     parameters.OUTPUT_FOLDER = out_folder_save + '_RUN_3'
     parameters.SGRAM_TYPE = 'CGRAM'
     parameters.USE_MONAURAL_FEATURES = False
     main()
 
-    print('Run number 1, CGRAM, monaural and binaural')
+    print('Run number 4, CGRAM, monaural and binaural')
     parameters.OUTPUT_FOLDER = out_folder_save + '_RUN_4'
     parameters.SGRAM_TYPE = 'CGRAM'
     parameters.USE_MONAURAL_FEATURES = True
