@@ -6,6 +6,7 @@ import sys
 import scipy.signal
 import scipy.io
 import scipy.fftpack
+import matplotlib.pyplot as plt
 
 def getMFCC(audio_in):
     assert isinstance(audio_in, numpy.ndarray)
@@ -338,3 +339,33 @@ def getGFCC(signal_in):
     gfcc_feature = gf_dct[:,0:parameters.GFCC_NUM_COEFF]
 
     return gfcc_feature
+
+def inverseGammatoneFilter(gamma_in):
+    assert isinstance(gamma_in, numpy.ndarray)
+
+    gt_fir = getGammatoneFir()
+    fc = getGammatoneCenterFreq()
+    total_inverse = numpy.zeros(gamma_in.shape[1])
+    total_gt = numpy.zeros(gamma_in.shape[1])
+    for channel in range(gamma_in.shape[0]):
+        in_ear_coeffs = 10 ** ((loudness(fc[channel]) - 60) / 20)
+        total_inverse += scipy.signal.convolve(gamma_in[channel,:], gt_fir[channel, ::-1], 'same')/(in_ear_coeffs**2)
+
+        zero_pad_fir = numpy.zeros(gamma_in.shape[1])
+        zero_pad_fir[0:gt_fir.shape[1]] = gt_fir[channel,:]
+        total_gt += scipy.signal.convolve(zero_pad_fir, gt_fir[channel, ::-1], 'same')/(in_ear_coeffs**2)
+
+    inverse_fft = numpy.fft.rfft(total_inverse)
+    gt_rest_fft_abs = numpy.abs(numpy.fft.rfft(total_gt))
+
+    inverse_fft[gt_rest_fft_abs > 0.01] = inverse_fft[gt_rest_fft_abs > 0.01]/gt_rest_fft_abs[gt_rest_fft_abs > 0.01]
+    inverse_fft[gt_rest_fft_abs <= 0.01] = 0
+
+    recon = numpy.fft.irfft(inverse_fft)
+    #Shift left recon 1 sample, to fix phase difference
+    recon[0:-1] = recon[1:]
+    recon[-1] = 0
+
+    plt.plot(numpy.abs(numpy.fft.rfft(total_gt)))
+    plt.title('Total Gammatone Resp')
+    return recon
