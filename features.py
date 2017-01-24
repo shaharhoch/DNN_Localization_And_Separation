@@ -123,7 +123,7 @@ def applyGammatoneFilterbank(signal_in, num_channels=parameters.CGRAM_NUM_CHANNE
 
     return gt_filtered
 
-def applyIbmToSignal(signal_in, ibm=None):
+def applyIbmToSignalStft(signal_in, ibm=None):
     assert isinstance(signal_in, numpy.ndarray)
     if(ibm is None):
         num_of_windows = int((float(len(signal_in) - parameters.WINDOW_SIZE_SAMPLES) / float(parameters.WINDOW_STEP_SAMPLES)) + 1)
@@ -133,6 +133,75 @@ def applyIbmToSignal(signal_in, ibm=None):
     stft = getStft(signal_in)
     masked_stft = stft*ibm
     return getIstft(masked_stft)
+
+def applyIbmToSignalCgram(signal_in, ibm=None):
+    assert isinstance(signal_in, numpy.ndarray)
+    if (ibm is None):
+        num_of_windows = int(
+            (float(len(signal_in) - parameters.WINDOW_SIZE_SAMPLES) / float(parameters.WINDOW_STEP_SAMPLES)) + 1)
+        ibm = numpy.ones((num_of_windows, parameters.CGRAM_NUM_CHANNELS))
+    assert isinstance(ibm, numpy.ndarray)
+
+    gt_filtered = applyGammatoneFilterbank(signal_in)
+    gt_fir = getGammatoneFir()
+    fc = getGammatoneCenterFreq()
+
+    # Get raised cosine window
+    # Get time vector in range [0,1) in size of window
+    time = numpy.array(range(parameters.WINDOW_SIZE_SAMPLES)) / parameters.WINDOW_SIZE_SAMPLES
+    cos_win = (1 + numpy.cos(2 * numpy.pi * time - numpy.pi)) / 2
+
+    signal_out = numpy.zeros(signal_in.shape)
+    total_gt = numpy.zeros(signal_in.shape)
+    for channel in range(parameters.CGRAM_NUM_CHANNELS):
+        # Apply inverse filter in time, to get rid of phase
+        in_ear_coeffs = 10 ** ((loudness(fc[channel]) - 60) / 20)
+        channel_signal = scipy.signal.convolve(gt_filtered[channel, :], gt_fir[channel, ::-1], 'same') / (in_ear_coeffs ** 2)
+
+        # Add to the total gammatone filter response
+        zero_pad_fir = numpy.zeros(gt_filtered.shape[1])
+        zero_pad_fir[0:gt_fir.shape[1]] = gt_fir[channel, :]
+        total_gt += scipy.signal.convolve(zero_pad_fir, gt_fir[channel, ::-1], 'same') / (in_ear_coeffs ** 2)
+
+        # Get signal channel weight
+        win_len = parameters.WINDOW_SIZE_SAMPLES
+        win_shift = parameters.WINDOW_STEP_SAMPLES
+        weight = numpy.zeros(len(signal_in))
+
+        for frame_ind in range(ibm.shape[0]):
+            start_ind = frame_ind * win_shift
+            weight[start_ind:start_ind + win_len] += ibm[frame_ind, channel] * cos_win
+
+        # The first and last win shifts of the signal didn't get summed up twice, so we need to deal with it separately.
+        # We don't have the ibm for it, but we can use the last ibm and assume it stays unchanged
+        weight[-1 * win_shift:] += ibm[-1, channel] * cos_win[0:win_shift]
+        weight[0:win_shift] += ibm[0, channel] * cos_win[-1 * win_shift:]
+
+        signal_out = signal_out + weight * channel_signal
+
+    # Apply inverse weighting of the total gt filter response
+    signal_out_fft = numpy.fft.rfft(signal_out)
+    gt_resp_fft_abs = numpy.abs(numpy.fft.rfft(total_gt))
+
+    signal_out_fft[gt_resp_fft_abs > 0.01] = signal_out_fft[gt_resp_fft_abs > 0.01] / gt_resp_fft_abs[gt_resp_fft_abs > 0.01]
+    signal_out_fft[gt_resp_fft_abs <= 0.01] = 0
+
+    recon = numpy.fft.irfft(signal_out_fft)
+
+    # Shift left recon 1 sample, to fix phase difference
+    recon[0:-1] = recon[1:]
+    recon[-1] = 0
+
+    return recon
+
+def applyIbmToSignal(signal_in, ibm=None):
+    if (parameters.SGRAM_TYPE == 'STFT'):
+        return applyIbmToSignalStft(signal_in, ibm)
+
+    if (parameters.SGRAM_TYPE == 'CGRAM'):
+        return applyIbmToSignalCgram(signal_in, ibm)
+
+    raise Exception('Invalid parameters.SGRAM_TYPE')
 
 def getCochleagram(audio_in):
     assert isinstance(audio_in, numpy.ndarray)
@@ -255,7 +324,13 @@ def getStft(in_signal):
     return stft
 
 def getSpectrogram(in_signal):
-    return numpy.abs(getStft(in_signal))
+    if(parameters.SGRAM_TYPE == 'STFT'):
+        return numpy.abs(getStft(in_signal))
+
+    if(parameters.SGRAM_TYPE == 'CGRAM'):
+        return getCochleagram(in_signal)
+
+    raise Exception('Invalid parameters.SGRAM_TYPE')
 
 def getIstft(in_stft):
     assert  isinstance(in_stft, numpy.ndarray)
@@ -299,33 +374,3 @@ def getGFCC(signal_in):
     gfcc_feature = gf_dct[:,0:parameters.GFCC_NUM_COEFF]
 
     return gfcc_feature
-
-def inverseGammatoneFilter(gamma_in):
-    assert isinstance(gamma_in, numpy.ndarray)
-
-    gt_fir = getGammatoneFir()
-    fc = getGammatoneCenterFreq()
-    total_inverse = numpy.zeros(gamma_in.shape[1])
-    total_gt = numpy.zeros(gamma_in.shape[1])
-    for channel in range(gamma_in.shape[0]):
-        in_ear_coeffs = 10 ** ((loudness(fc[channel]) - 60) / 20)
-        total_inverse += scipy.signal.convolve(gamma_in[channel,:], gt_fir[channel, ::-1], 'same')/(in_ear_coeffs**2)
-
-        zero_pad_fir = numpy.zeros(gamma_in.shape[1])
-        zero_pad_fir[0:gt_fir.shape[1]] = gt_fir[channel,:]
-        total_gt += scipy.signal.convolve(zero_pad_fir, gt_fir[channel, ::-1], 'same')/(in_ear_coeffs**2)
-
-    inverse_fft = numpy.fft.rfft(total_inverse)
-    gt_rest_fft_abs = numpy.abs(numpy.fft.rfft(total_gt))
-
-    inverse_fft[gt_rest_fft_abs > 0.01] = inverse_fft[gt_rest_fft_abs > 0.01]/gt_rest_fft_abs[gt_rest_fft_abs > 0.01]
-    inverse_fft[gt_rest_fft_abs <= 0.01] = 0
-
-    recon = numpy.fft.irfft(inverse_fft)
-    #Shift left recon 1 sample, to fix phase difference
-    recon[0:-1] = recon[1:]
-    recon[-1] = 0
-
-    plt.plot(numpy.abs(numpy.fft.rfft(total_gt)))
-    plt.title('Total Gammatone Resp')
-    return recon
