@@ -75,17 +75,21 @@ def estimateTestPerformance(train_data, net):
     test_entries = create_mixtures.build_test_dataset(train_data.mean, train_data.std)
     avg_source_fa = 0
     avg_source_md = 0
+    avg_pesq = 0
     for entry in test_entries:
         assert isinstance(entry, DataEntry)
         performance = entry.estimateNetPerformance(net)
         avg_source_fa = avg_source_fa + performance['source_fa']
         avg_source_md = avg_source_md + performance['source_md']
+        avg_pesq = avg_pesq + performance['PESQ']
 
     avg_source_fa = avg_source_fa / len(test_entries)
     avg_source_md = avg_source_md / len(test_entries)
+    avg_pesq = avg_pesq/ len(test_entries)
 
     print('Average Source FA: {0}%'.format(avg_source_fa * 100))
     print('Average Source MD: {0}%'.format(avg_source_md * 100))
+    print('Average PESQ: {0}'.format(avg_pesq))
 
 def getTrainingData():
     training_data_file = os.path.join(parameters.OUTPUT_FOLDER, TRAIN_DATA_FILE)
@@ -117,14 +121,22 @@ def saveNet(net):
 
     print('DNN saved.')
 
-if __name__ == '__main__':
+def main():
     train_data = getTrainingData()
     assert isinstance(train_data, TrainData)
 
-    net = initNet(parameters.SIZE_OF_FEATURE_VEC, [parameters.SGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS+1])
+    net = initNet(parameters.SIZE_OF_FEATURE_VEC, [parameters.SGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS + 1])
     history = net.fit(train_data.getTrainInputs(), train_data.getTrainTargets(), batch_size=100,
                       nb_epoch=parameters.MAX_EPOCHS_TRAIN, validation_split=0.15)
     saveNet(net)
 
     plotTrainAccuracy(history)
     estimateTestPerformance(train_data, net)
+
+if __name__ == '__main__':
+
+    parameters.OUTPUT_FOLDER = out_folder_save+'1'
+
+    print('Run number 1, STFT, only binaural')
+    parameters.
+    main()
