@@ -370,6 +370,8 @@ class DataEntry():
             cur_pesq = float(res_line.split('\t')[2])
             performance['PESQ'] += cur_pesq
 
+            log_file.close()
+
         performance['PESQ'] /= len(self.angles)
 
         return performance
