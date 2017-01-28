@@ -343,7 +343,7 @@ class DataEntry():
         pesq_folder = os.path.realpath(os.path.join(cur_file_folder, '../PESQ'))
         pesq_run_file = os.path.join(pesq_folder, 'PESQ.exe')
 
-        angles = self.angles #This line should be deleted!!!!!
+        failed_pesq = 0
         for ind in range(len(self.angles)):
             if self.angles[ind] not in angles:
                 continue
@@ -361,18 +361,27 @@ class DataEntry():
             os.system('{0} +16000 {1} {2}'.format(pesq_run_file, original_file, est_file))
 
             # Extract result from log
-            log_file = open(log_file_path, 'r')
+            try:
+                log_file = open(log_file_path, 'r')
 
-            # Skip the first line
-            log_file.readline()
+                # Skip the first line
+                log_file.readline()
 
-            res_line = log_file.readline()
-            cur_pesq = float(res_line.split('\t')[2])
-            performance['PESQ'] += cur_pesq
+                res_line = log_file.readline()
+                cur_pesq = float(res_line.split('\t')[2])
+                performance['PESQ'] += cur_pesq
+                print('PESQ calculation succeeded')
+            except Exception:
+                print('PESQ calculation failed')
+                failed_pesq += 1
+            finally:
+                log_file.close()
 
-            log_file.close()
-
-        performance['PESQ'] /= len(self.angles)
+        if(failed_pesq >= len(self.angles)):
+            print('All PESQ calculations failed for '+str(self.save_folder))
+            performance['PESQ'] = 'Invalid'
+        else:
+            performance['PESQ'] /= (len(self.angles)-failed_pesq)
 
         return performance
 

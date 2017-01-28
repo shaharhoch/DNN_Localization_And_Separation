@@ -76,16 +76,19 @@ def estimateTestPerformance(train_data, net):
     avg_source_fa = 0
     avg_source_md = 0
     avg_pesq = 0
+    valid_pesq = 0
     for entry in test_entries:
         assert isinstance(entry, DataEntry)
         performance = entry.estimateNetPerformance(net)
         avg_source_fa = avg_source_fa + performance['source_fa']
         avg_source_md = avg_source_md + performance['source_md']
-        avg_pesq = avg_pesq + performance['PESQ']
+        if(performance['PESQ'] != 'Invalid'):
+            avg_pesq = avg_pesq + performance['PESQ']
+            valid_pesq += 1
 
     avg_source_fa = avg_source_fa / len(test_entries)
     avg_source_md = avg_source_md / len(test_entries)
-    avg_pesq = avg_pesq/ len(test_entries)
+    avg_pesq = avg_pesq/valid_pesq
 
     print('Average Source FA: {0}%'.format(avg_source_fa * 100))
     print('Average Source MD: {0}%'.format(avg_source_md * 100))
