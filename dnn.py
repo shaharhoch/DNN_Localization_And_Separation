@@ -75,21 +75,21 @@ def estimateTestPerformance(train_data, net):
     test_entries = create_mixtures.build_test_dataset(train_data.mean, train_data.std)
     avg_source_fa = 0
     avg_source_md = 0
-    avg_pesq = 0
+    avg_ops = 0
     for entry in test_entries:
         assert isinstance(entry, DataEntry)
         performance = entry.estimateNetPerformance(net)
         avg_source_fa = avg_source_fa + performance['source_fa']
         avg_source_md = avg_source_md + performance['source_md']
-        avg_pesq = avg_pesq + performance['PESQ']
+        avg_ops = avg_ops + performance['OPS']
 
     avg_source_fa = avg_source_fa / len(test_entries)
     avg_source_md = avg_source_md / len(test_entries)
-    avg_pesq = avg_pesq/ len(test_entries)
+    avg_ops = avg_ops/ len(test_entries)
 
     print('Average Source FA: {0}%'.format(avg_source_fa * 100))
     print('Average Source MD: {0}%'.format(avg_source_md * 100))
-    print('Average PESQ: {0}'.format(avg_pesq))
+    print('Average OPS: {0}%'.format(avg_ops))
 
 def getTrainingData():
     training_data_file = os.path.join(parameters.OUTPUT_FOLDER, TRAIN_DATA_FILE)

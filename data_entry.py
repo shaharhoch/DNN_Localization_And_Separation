@@ -8,6 +8,7 @@ import os.path
 import matplotlib.pyplot as plt
 from keras.models import Model
 import scipy.io.wavfile
+import matlab.engine
 
 class DataEntry():
 
@@ -337,42 +338,27 @@ class DataEntry():
             source_fa = len([a for a in angles if a not in self.angles])/len(angles)
         performance['source_fa'] = source_fa
 
-        #Get PESQ
-        performance['PESQ'] = 0
-        cur_file_folder = os.path.dirname(os.path.realpath(__file__))
-        pesq_folder = os.path.realpath(os.path.join(cur_file_folder, '../PESQ'))
-        pesq_run_file = os.path.join(pesq_folder, 'PESQ.exe')
+        #Get OPS
+        performance['OPS'] = 0
 
-        angles = self.angles #This line should be deleted!!!!!
         for ind in range(len(self.angles)):
             if self.angles[ind] not in angles:
                 continue
 
-            # Remove the log if it exists
-            log_file_path = os.path.join(os.getcwd(), 'pesq_results.txt')
-            if os.path.exists(log_file_path):
-                os.remove(log_file_path)
-
             original_file = os.path.join(self.save_folder, 'Original_{0}.wav'.format(ind+1))
+            original_file2 = os.path.join(self.save_folder, 'Original_{0}.wav'.format(2-ind))
 
             est_ind = angles.index(self.angles[ind])
             est_file = os.path.join(self.save_folder, 'estimated_signal_{0}.wav'.format(est_ind + 1))
-            # Run pesq
-            os.system('{0} +16000 {1} {2}'.format(pesq_run_file, original_file, est_file))
 
-            # Extract result from log
-            log_file = open(log_file_path, 'r')
+            # Run OPR
+            eng = matlab.engine.start_matlab()
+            eng.cd(r'..//PEASS')
+            ops = eng.getOPS(original_file, original_file2,est_file)
 
-            # Skip the first line
-            log_file.readline()
+            performance['OPS'] += ops
 
-            res_line = log_file.readline()
-            cur_pesq = float(res_line.split('\t')[2])
-            performance['PESQ'] += cur_pesq
-
-            log_file.close()
-
-        performance['PESQ'] /= len(self.angles)
+        performance['OPS'] /= len(self.angles)
 
         return performance
 
