@@ -18,8 +18,12 @@ class TrainData():
         self.train_input = numpy.zeros((num_of_windows, parameters.getSizeOfFeatureVec()))
 
         # Init output target list of vectors
+        if parameters.SGRAM_TYPE == 'SGRAM':
+            num_of_channels = parameters.SGRAM_NUM_CHANNELS
+        else:
+            num_of_channels = parameters.CGRAM_NUM_CHANNELS
         self.train_targets = []
-        for ind in range(parameters.SGRAM_NUM_CHANNELS):
+        for ind in range(num_of_channels):
             self.train_targets.append(numpy.zeros((num_of_windows, parameters.NUM_OF_DIRECTIONS + 1)))
 
         #Init mean and variance to values that won't do anything

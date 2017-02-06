@@ -47,15 +47,20 @@ def initNet(in_dim, out_dim):
 def plotTrainAccuracy(history):
     assert isinstance(history, callbacks.History)
 
+    if parameters.SGRAM_TYPE == 'SGRAM':
+        num_of_channels = parameters.SGRAM_NUM_CHANNELS
+    else:
+        num_of_channels = parameters.CGRAM_NUM_CHANNELS
+
     # Calculate total average train and validation accuracy
     val_acc = numpy.zeros(parameters.MAX_EPOCHS_TRAIN)
     train_acc = numpy.zeros(parameters.MAX_EPOCHS_TRAIN)
-    for ind in range(parameters.SGRAM_NUM_CHANNELS):
+    for ind in range(num_of_channels):
         val_acc = val_acc + numpy.array(history.history['val_out_{0}_categorical_accuracy'.format(ind)])
         train_acc = train_acc + numpy.array(history.history['out_{0}_categorical_accuracy'.format(ind)])
 
-    val_acc = val_acc/parameters.SGRAM_NUM_CHANNELS
-    train_acc = train_acc/parameters.SGRAM_NUM_CHANNELS
+    val_acc = val_acc/num_of_channels
+    train_acc = train_acc/num_of_channels
 
     #Plot accuracy
     fig = plt.figure()
@@ -125,7 +130,11 @@ def main():
     train_data = getTrainingData()
     assert isinstance(train_data, TrainData)
 
-    net = initNet(parameters.getSizeOfFeatureVec(), [parameters.SGRAM_NUM_CHANNELS, parameters.NUM_OF_DIRECTIONS + 1])
+    if parameters.SGRAM_TYPE == 'SGRAM':
+        num_of_channels = parameters.SGRAM_NUM_CHANNELS
+    else:
+        num_of_channels = parameters.CGRAM_NUM_CHANNELS
+    net = initNet(parameters.getSizeOfFeatureVec(), [num_of_channels, parameters.NUM_OF_DIRECTIONS + 1])
     history = net.fit(train_data.getTrainInputs(), train_data.getTrainTargets(), batch_size=100,
                       nb_epoch=parameters.MAX_EPOCHS_TRAIN, validation_split=0.15, verbose=2)
     saveNet(net)
@@ -135,18 +144,6 @@ def main():
 
 if __name__ == '__main__':
     out_folder_save = parameters.OUTPUT_FOLDER
-
-    print('Run number 1, STFT, only binaural')
-    parameters.OUTPUT_FOLDER = out_folder_save + '_RUN_1'
-    parameters.SGRAM_TYPE = 'STFT'
-    parameters.USE_MONAURAL_FEATURES = False
-    main()
-
-    print('Run number 2, STFT, monaural and binaural')
-    parameters.OUTPUT_FOLDER = out_folder_save + '_RUN_2'
-    parameters.SGRAM_TYPE = 'STFT'
-    parameters.USE_MONAURAL_FEATURES = True
-    main()
 
     print('Run number 3, Cgram, only binaural')
     parameters.OUTPUT_FOLDER = out_folder_save + '_RUN_3'
